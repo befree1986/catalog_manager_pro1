@@ -881,6 +881,9 @@ class CatalogoMainWindow(QMainWindow):
         self.category_order_file = "category_order.json"
         self.catalog_structure_file = "catalog_structure.json" # Nuovo file per la struttura avanzata
 
+        self.auto_save_config = self._load_auto_save_config()
+        self._configure_auto_save_timer()
+
         # Impostazioni predefinite Catalogo
         self.catalog_settings = {
             'title': 'Catalogo Prodotti',
@@ -1930,6 +1933,49 @@ class CatalogoMainWindow(QMainWindow):
         self.auto_save_config['interval_minutes'] = self.auto_save_interval_spinbox.value()
         self._save_auto_save_config()
         self._configure_auto_save_timer() # Riconfigura il timer immediatamente
+
+    def _load_auto_save_config(self):
+        """Carica la configurazione di salvataggio automatico da file o usa default."""
+        config_file = "autosave_config.json"
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {'enabled': False, 'interval_minutes': 5}
+
+    def _save_auto_save_config(self):
+        """Salva la configurazione corrente su file."""
+        try:
+            with open("autosave_config.json", 'w') as f:
+                json.dump(self.auto_save_config, f, indent=4)
+        except Exception as e:
+            print(f"Errore durante il salvataggio della configurazione: {e}")
+
+    def _configure_auto_save_timer(self):
+        """Configura e avvia/ferma il timer in base alle impostazioni."""
+        if not hasattr(self, 'auto_save_timer'):
+            self.auto_save_timer = QTimer()
+            self.auto_save_timer.timeout.connect(self.auto_save_task)
+        
+        self.auto_save_timer.stop()
+        if self.auto_save_config.get('enabled', False):
+            interval = self.auto_save_config.get('interval_minutes', 5)
+            self.auto_save_timer.start(interval * 60 * 1000)
+
+    def auto_save_task(self):
+        """Esegue il backup automatico del database."""
+        autosave_dir = 'autosave'
+        if not os.path.exists(autosave_dir):
+            os.makedirs(autosave_dir)
+        
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        dest = os.path.join(autosave_dir, f'autosave_{timestamp}.db')
+        try:
+            shutil.copy2('catalogo.db', dest)
+        except:
+            pass
 
     def setup_tipologie_tab(self, parent_widget):
         layout = QVBoxLayout(parent_widget)
