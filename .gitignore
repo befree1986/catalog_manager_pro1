@@ -1,0 +1,10 @@
+build/
+dist/
+__pycache__/
+*.db
+backups/
+autosave/
+*.exe
+*.spec
+catalog_profiles.json
+category_order.json

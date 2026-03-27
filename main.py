@@ -16,7 +16,7 @@ try:
 except ImportError:
     notification = None
 try:
-    import requests # Richiede 'pip install requests'
+    import requests # Requires 'pip install requests'
 except ImportError:
     requests = None
 
@@ -2152,20 +2152,23 @@ class CatalogoMainWindow(QMainWindow):
 
             # Confronto versioni basilare (stringa)
             if latest_version > APP_VERSION:
-                # Mostra notifica di sistema
-                notification.notify(
-                    title='Aggiornamento Catalogo Manager Pro',
-                    message=f'È disponibile una nuova versione: {latest_version}. Il download inizierà automaticamente.\n\nNote: {notes}',
-                    app_name='Catalogo Manager Pro',
-                    # app_icon='icon.ico', # Requires absolute path and .ico format for Windows
-                    timeout=10 # Notifica visibile per 10 secondi
-                )
+                # 1. Notifica l'utente tramite sistema
+                if notification:
+                    try:
+                        notification.notify(
+                            title='Aggiornamento Disponibile',
+                            message=f'La versione {latest_version} è in fase di download automatico.',
+                            app_name='Catalogo Manager Pro',
+                            timeout=10
+                        )
+                    except:
+                        pass
                 
-                # Avvia il download automaticamente
+                # 2. Avvia il download automaticamente in background
                 if download_url:
                     self.start_auto_update(download_url)
                 else:
-                    QMessageBox.warning(self, "Errore Aggiornamento", "URL di download non trovato per l'aggiornamento.")
+                    print("Errore: URL di download non trovato nel JSON.")
             else:
                 QMessageBox.information(self, "Aggiornato", 
                     f"Hai già l'ultima versione ({APP_VERSION}).")

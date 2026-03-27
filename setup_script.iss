@@ -30,6 +30,7 @@ SetupIconFile=icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+LicenseFile=license.txt
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"

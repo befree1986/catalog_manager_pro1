@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import datetime
+import shutil
 
 # --- Configurazione ---
 # Percorso al file main.py per leggere la versione
@@ -70,6 +71,12 @@ def create_github_release(version, installer_path):
     tag_name = f"v{version}"
     release_name = f"Version {version}"
     release_notes = f"Aggiornamento alla versione {version}." # Puoi personalizzare queste note
+
+    # Verifica se gh esiste nel sistema
+    gh_path = shutil.which("gh")
+    if not gh_path:
+        print("Errore: GitHub CLI ('gh') non è nel PATH. Prova a riavviare VS Code.")
+        sys.exit(1)
 
     if not os.path.exists(installer_path):
         print(f"Errore: Installer non trovato al percorso specificato: {installer_path}")
