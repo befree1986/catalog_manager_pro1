@@ -5,6 +5,7 @@ import datetime
 import json
 import pandas as pd
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar
+import webbrowser
 from PyQt5.QtGui import QPixmap, QFont, QColor, QIcon, QTextDocument
 from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QSpinBox, QGroupBox
@@ -27,7 +28,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db
 
-APP_VERSION = "1.1.1" # Versione dell'applicazione, aggiornata manualmente ad ogni release. Formato: Major.Minor.Patch (es. 1.0.0)
+APP_VERSION = "1.1.2" # Versione incrementata per testare l'auto-update
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 class DownloadThread(QThread):
@@ -427,12 +428,14 @@ class ColumnMappingDialog(QDialog):
         # Sezione dinamica per listini
         # Mostriamo tutte le colonne excel non ancora mappate (anche se qui le mostriamo tutte per semplicità)
         # L'utente può mappare una colonna a un listino
+        self.extra_listini_widget = QWidget()
         self.extra_listini_container = QVBoxLayout()
+        self.extra_listini_widget.setLayout(self.extra_listini_container)
         
         btn_add_listino = QPushButton("➕ Aggiungi Mappatura Listino")
         btn_add_listino.clicked.connect(lambda: self.add_listino_row(None, None, self.extra_listini_container))
         
-        form_layout.addRow(self.extra_listini_container)
+        form_layout.addRow(self.extra_listini_widget)
         form_layout.addRow(btn_add_listino)
         
         # Auto-detect listini
@@ -1265,8 +1268,12 @@ class CatalogoMainWindow(QMainWindow):
         btn_email_cat = QPushButton("📧 Invia Email")
         btn_email_cat.clicked.connect(self.email_catalogo_selezionato)
         
+        btn_whatsapp_cat = QPushButton("💬 WhatsApp")
+        btn_whatsapp_cat.clicked.connect(self.whatsapp_catalogo_selezionato)
+        
         dash_cat_btns.addWidget(btn_open_cat)
         dash_cat_btns.addWidget(btn_email_cat)
+        dash_cat_btns.addWidget(btn_whatsapp_cat)
         right_dash_layout.addLayout(dash_cat_btns)
         
         right_dash_layout.addStretch()
@@ -2313,6 +2320,29 @@ class CatalogoMainWindow(QMainWindow):
                     QMessageBox.information(self, 'Inviato', 'Email inviata con successo.')
             else:
                 QMessageBox.warning(self, "Errore", "File non trovato.")
+
+    def whatsapp_catalogo_selezionato(self):
+        """Apre WhatsApp Web o Desktop per inviare un messaggio rapido al cliente."""
+        row = self.cataloghi_dashboard_table.currentRow()
+        if row >= 0:
+            cat_name = self.cataloghi_dashboard_table.item(row, 0).text()
+            numero, ok = QInputDialog.getText(self, 'Condividi via WhatsApp', 
+                                            'Inserisci il numero del destinatario\n(con prefisso internazionale, es: 393331234567):')
+            if ok and numero:
+                # Pulisce il numero da eventuali spazi o caratteri speciali
+                clean_number = "".join(filter(str.isdigit, numero))
+                messaggio = f"Ciao! Ti invio il catalogo '{cat_name}' creato con Catalogo Manager Pro."
+                url = f"https://api.whatsapp.com/send?phone={clean_number}&text={messaggio}"
+                
+                # Apriamo la chat
+                webbrowser.open(url)
+                
+                # Apriamo la cartella contenente il file per facilitare il drag-and-drop
+                path = self.cataloghi_dashboard_table.item(row, 0).data(Qt.UserRole + 1)
+                if path and os.path.exists(path):
+                    subprocess.Popen(f'explorer /select,"{os.path.abspath(path)}"')
+                
+                QMessageBox.information(self, 'WhatsApp', "Si è aperta la chat di WhatsApp e la cartella del file.\n\nTrascina il file PDF evidenziato direttamente nella chat per inviarlo.")
 
     def aggiorna_griglia_prodotti(self):
         # Selettore Tipologia Sidebar
