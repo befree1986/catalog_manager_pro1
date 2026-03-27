@@ -1,0 +1,21 @@
+CONTRATTO DI LICENZA CON L'UTENTE FINALE (EULA)
+
+LEGGERE ATTENTAMENTE QUESTO CONTRATTO DI LICENZA.
+
+Questo Contratto di Licenza con l'Utente Finale ("EULA") è un accordo legale tra l'utente (persona fisica o singola entità) e BeFree per l'applicazione software Catalogo Manager Pro che accompagna questo EULA.
+
+Installando, copiando o utilizzando in altro modo il SOFTWARE, l'utente accetta di essere vincolato dai termini di questo EULA. Se non si accettano i termini di questo EULA, non installare o utilizzare il SOFTWARE.
+
+1. CONCESSIONE DELLA LICENZA
+Marino G. concede all'utente una licenza personale, non trasferibile e non esclusiva per utilizzare il SOFTWARE sul proprio dispositivo in conformità con i termini di questo EULA.
+
+2. RESTRIZIONI
+L'utente non è autorizzato a:
+- Riprodurre, copiare, distribuire, rivendere o utilizzare in altro modo il SOFTWARE per scopi commerciali.
+- Modificare, decompilare, disassemblare o decodificare il SOFTWARE.
+
+3. COPYRIGHT
+Il SOFTWARE è protetto dalle leggi sul copyright e dai trattati internazionali sul copyright. Marino G. detiene tutti i diritti, titoli e interessi relativi al SOFTWARE.
+
+4. ESCLUSIONE DI GARANZIA
+IL SOFTWARE VIENE FORNITO "COSÌ COM'È", SENZA GARANZIE DI ALCUN TIPO, ESPLICITE O IMPLICITE.
