@@ -41,6 +41,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; Assicurati di aver compilato prima il progetto con: pyinstaller CatalogoApp.spec
 Source: "dist\CatalogoApp.exe"; DestDir: "{app}"; Flags: ignoreversion
+; Includi il redistributable scaricato. Viene copiato nella cartella temporanea e rimosso dopo l'installazione.
+Source: "VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; Nota: I file .db e .json verranno creati automaticamente dall'app al primo avvio
 
 [Icons]
@@ -48,4 +50,27 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+; Esegue l'installazione del VC Redist in modalità silenziosa prima di completare il setup
+Filename: "{tmp}\VC_redist.x64.exe"; Parameters: "/install /quiet /norestart"; \
+    Check: VCRedistNeedsInstall; StatusMsg: "Installazione dei componenti di sistema (Microsoft Visual C++ Redistributable)..."
+
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function VCRedistNeedsInstall: Boolean;
+var
+  Version: String;
+begin
+  // Verifica se la versione 2015-2022 (v14.x) è già presente nel registro di sistema
+  if RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64', 'Version', Version) then
+  begin
+    // Se trova il valore, confronta o semplicemente considera che sia installato
+    Log('VC Redist v14 trovato: ' + Version);
+    Result := False;
+  end
+  else
+  begin
+    Log('VC Redist non trovato, procedo con l''installazione.');
+    Result := True;
+  end;
+end;

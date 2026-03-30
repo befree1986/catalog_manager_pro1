@@ -3,8 +3,9 @@ import os
 import shutil
 import datetime
 import json
+import logging
 import pandas as pd
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar, QTextEdit
 import webbrowser
 from PyQt5.QtGui import QPixmap, QFont, QColor, QIcon, QTextDocument
 from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QTimer
@@ -867,9 +868,53 @@ class TemplateEditorDialog(QDialog):
             
         return self.style
 
+class SupportDialog(QDialog):
+    """Dialogo per l'invio di segnalazioni ed errori all'assistenza."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Contatta Assistenza / Segnala Errore")
+        self.setMinimumWidth(500)
+        layout = QVBoxLayout(self)
+        
+        header = QLabel("<b>Invia un messaggio all'assistenza tecnica</b>")
+        header.setStyleSheet("font-size: 14px; margin-bottom: 5px;")
+        layout.addWidget(header)
+        
+        info = QLabel("Descrivi il problema o il suggerimento. Le informazioni verranno inviate in modo sicuro.")
+        info.setWordWrap(True)
+        info.setStyleSheet("color: #555; margin-bottom: 10px;")
+        layout.addWidget(info)
+        
+        self.messaggio = QTextEdit()
+        self.messaggio.setPlaceholderText("Scrivi qui il tuo messaggio...")
+        layout.addWidget(self.messaggio)
+        
+        self.chk_logs = QCheckBox("Includi file di log (debug_log.txt) per diagnosi tecnica")
+        self.chk_logs.setChecked(True)
+        layout.addWidget(self.chk_logs)
+        
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.button_box.button(QDialogButtonBox.Ok).setText("Invia Messaggio")
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
+
+    def get_data(self):
+        return self.messaggio.toPlainText(), self.chk_logs.isChecked()
+
 class CatalogoMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        # Verifica se il database è scrivibile prima di procedere
+        if not self._check_db_writable():
+            logging.error("Avvio interrotto: Il database non è scrivibile. Verificare i permessi della cartella di installazione.")
+            QMessageBox.critical(None, "Errore Permessi", 
+                                 "Impossibile scrivere nel database (catalogo.db).\n\n"
+                                 "Assicurati che l'applicazione non sia in una cartella protetta "
+                                 "(come Programmi senza permessi admin) o che il file non sia bloccato.")
+            sys.exit(1)
+
         self.backup_database() # Backup automatico all'avvio
         init_db()  # Inizializza il database all'avvio
         self.setWindowTitle('Dashboard Catalogo')
@@ -906,6 +951,25 @@ class CatalogoMainWindow(QMainWindow):
         self.init_ui()
         # Caricamento iniziale dati
         self.switch_page(0) 
+
+    def _check_db_writable(self):
+        """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
+        db_path = 'catalogo.db'
+        try:
+            if os.path.exists(db_path):
+                # Prova ad aprire il file esistente in modalità append per testare la scrittura
+                with open(db_path, 'a'):
+                    pass
+            else:
+                # Se non esiste, testa se è possibile creare un file nella directory corrente
+                test_file = '.write_test'
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+            return True
+        except (IOError, OSError) as e:
+            logging.exception(f"Errore durante il controllo di scrittura del database: {e}")
+            return False
 
     def get_valid_image_path(self, relative_path):
         if not relative_path or not isinstance(relative_path, str):
@@ -1933,7 +1997,37 @@ class CatalogoMainWindow(QMainWindow):
         autosave_layout.addRow("Intervallo:", self.auto_save_interval_spinbox)
         
         layout.addWidget(autosave_group)
+
+        # GroupBox per Assistenza
+        support_group = QGroupBox("Supporto Tecnico")
+        support_layout = QVBoxLayout(support_group)
+        
+        support_label = QLabel("Hai riscontrato un errore o vuoi suggerire una funzionalità? Inviaci un messaggio diretto.")
+        support_label.setWordWrap(True)
+        support_layout.addWidget(support_label)
+        
+        btn_support = QPushButton("🆘 Invia Segnalazione / Richiedi Assistenza")
+        btn_support.setFixedHeight(40)
+        btn_support.setStyleSheet("background-color: #e67e22; color: white; font-weight: bold; border-radius: 5px;")
+        btn_support.clicked.connect(self.apri_supporto_dialog)
+        support_layout.addWidget(btn_support)
+        
+        layout.addWidget(support_group)
         layout.addStretch()
+
+    def apri_supporto_dialog(self):
+        """Apre un form per inviare messaggi di assistenza allo sviluppatore."""
+        dialog = SupportDialog(self)
+        if dialog.exec_():
+            testo, include_logs = dialog.get_data()
+            if not testo.strip(): return
+            log_path = 'debug_log.txt' if (include_logs and os.path.exists('debug_log.txt')) else None
+            try:
+                invia_email("g.marino787@gmail.com", f"Supporto App v{APP_VERSION}", testo, log_path)
+                QMessageBox.information(self, "Inviato", "Il tuo messaggio è stato inviato all'assistenza.")
+            except Exception as e:
+                logging.error(f"Errore invio mail supporto: {e}")
+                QMessageBox.critical(self, "Errore", f"Impossibile inviare la mail: {e}")
 
     def update_auto_save_ui_to_config(self):
         self.auto_save_config['enabled'] = self.auto_save_checkbox.isChecked()
@@ -2758,7 +2852,19 @@ class CatalogoMainWindow(QMainWindow):
                 QMessageBox.information(self, 'Invio', 'Email inviata!')
 
 if __name__ == '__main__':
+    # Configurazione del sistema di logging
+    logging.basicConfig(
+        filename='debug_log.txt',
+        level=logging.ERROR,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        encoding='utf-8'
+    )
+
     app = QApplication(sys.argv)
-    window = CatalogoMainWindow()
-    window.show()
-    sys.exit(app.exec_())
+    try:
+        window = CatalogoMainWindow()
+        window.show()
+        sys.exit(app.exec_())
+    except Exception as e:
+        logging.exception("Errore fatale non gestito durante l'esecuzione:")
+        sys.exit(1)
