@@ -95,22 +95,32 @@ def create_github_release(version, installer_path):
         sys.exit(1)
 
     try:
-        # Crea la release
-        print(f"Creazione della release '{release_name}' con tag '{tag_name}'...")
-        subprocess.run([
-            'gh', 'release', 'create', tag_name,
-            '--repo', f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}",
-            '--title', release_name,
-            '--notes', release_notes,
-            '--target', GITHUB_BRANCH # Assicurati che il tag punti al branch corretto
-        ], check=True)
-        print(f"Release '{release_name}' creata con successo.")
+        # Verifica se la release esiste già
+        check_release = subprocess.run([
+            'gh', 'release', 'view', tag_name,
+            '--repo', f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}"
+        ], capture_output=True)
+
+        if check_release.returncode != 0:
+            # Crea la release solo se non esiste
+            print(f"Creazione della release '{release_name}' con tag '{tag_name}'...")
+            subprocess.run([
+                'gh', 'release', 'create', tag_name,
+                '--repo', f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}",
+                '--title', release_name,
+                '--notes', release_notes,
+                '--target', GITHUB_BRANCH
+            ], check=True)
+            print(f"Release '{release_name}' creata con successo.")
+        else:
+            print(f"La release '{tag_name}' esiste già. Procedo con l'aggiornamento dell'asset.")
 
         # Carica l'asset
         print(f"Caricamento dell'asset '{os.path.basename(installer_path)}' sulla release '{tag_name}'...")
         subprocess.run([
             'gh', 'release', 'upload', tag_name, installer_path,
-            '--repo', f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}"
+            '--repo', f"{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}",
+            '--clobber' # Sovrascrive il file se esiste già
         ], check=True)
         print(f"Asset '{os.path.basename(installer_path)}' caricato con successo.")
 
