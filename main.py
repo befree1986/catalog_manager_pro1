@@ -29,7 +29,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db
 
-APP_VERSION = "1.1.2" # Versione incrementata per testare l'auto-update
+APP_VERSION = "1.1.3" # Versione incrementata per testare l'auto-update
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 class DownloadThread(QThread):
