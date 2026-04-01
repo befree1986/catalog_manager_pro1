@@ -37,7 +37,12 @@ def update_version_json(version):
     version_data = {
         "version": version,
         "url": download_url,
-        "notes": f"- Aggiornamento alla versione {version}." # Note di rilascio di default
+        "notes": (
+            "- Integrazione Microsoft Visual C++ Redistributable nell'installer.\n"
+            "- Nuovo sistema di assistenza tecnica diretta via email.\n"
+            "- Migliorata condivisione WhatsApp con apertura cartella automatica.\n"
+            "- Fix bug grafico nella mappatura dei listini prezzi extra."
+        )
     }
     
     with open(VERSION_JSON_PATH, 'w') as f:
@@ -51,9 +56,16 @@ def git_commit_and_push(version):
         subprocess.run(['git', 'add', VERSION_JSON_PATH], check=True)
         print(f"Aggiunto {VERSION_JSON_PATH} all'area di staging di Git.")
 
-        commit_message = f"Update version.json to v{version}"
-        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
-        print(f"Commit effettuato con messaggio: '{commit_message}'.")
+        # Verifica se ci sono effettivamente cambiamenti da committare
+        # Ritorna 0 se non ci sono differenze, 1 se ce ne sono
+        diff_check = subprocess.run(['git', 'diff', '--cached', '--quiet'])
+        
+        if diff_check.returncode == 0:
+            print("Il file version.json è già aggiornato nel repository. Salto il commit.")
+        else:
+            commit_message = f"Update version.json to v{version}"
+            subprocess.run(['git', 'commit', '-m', commit_message], check=True)
+            print(f"Commit effettuato con messaggio: '{commit_message}'.")
 
         subprocess.run(['git', 'push', 'origin', GITHUB_BRANCH], check=True)
         print(f"Push effettuato sul branch {GITHUB_BRANCH} su GitHub.")
