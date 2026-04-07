@@ -24,8 +24,12 @@ def invia_email(destinatario, oggetto, corpo, allegato=None):
             part.add_header('Content-Disposition', f'attachment; filename={os.path.basename(allegato)}')
             msg.attach(part)
             
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(mittente, password)
-    server.send_message(msg)
-    server.quit()
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
+        server.starttls()
+        server.login(mittente, password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        raise Exception(f"Errore di connessione o autenticazione: {str(e)}")

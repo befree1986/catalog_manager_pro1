@@ -77,11 +77,13 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
                             if res:
                                 listino_id = res[0]
                             else:
-                                c.execute('INSERT INTO listini (nome, descrizione) VALUES (?, ?)', (listino_nome, "Importato da Excel"))
-                                listino_id = c.lastrowid
+                                c.execute('INSERT OR IGNORE INTO listini (nome, descrizione) VALUES (?, ?)', (listino_nome, "Importato"))
+                                c.execute('SELECT id FROM listini WHERE nome = ?', (listino_nome,))
+                                res_new = c.fetchone()
+                                listino_id = res_new[0] if res_new else None
                             
-                            # Inserisci prezzo
-                            c.execute('INSERT INTO prezzi_listini (listino_id, prodotto_id, prezzo) VALUES (?, ?, ?)', (listino_id, new_prod_id, prezzo_listino))
+                            if listino_id:
+                                c.execute('INSERT OR REPLACE INTO prezzi_listini (listino_id, prodotto_id, prezzo) VALUES (?, ?, ?)', (listino_id, new_prod_id, prezzo_listino))
                     except (ValueError, TypeError):
                         pass # Valore non valido, ignora
 

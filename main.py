@@ -29,7 +29,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db
 
-APP_VERSION = "1.1.3" # Versione incrementata per testare l'auto-update
+APP_VERSION = "1.1.4" # Versione incrementata per risoluzione crash
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 class DownloadThread(QThread):
@@ -850,7 +850,7 @@ class TemplateEditorDialog(QDialog):
             btn.setText(color_hex)
             btn.setStyleSheet(f"background-color: {color_hex}; color: {'white' if color.lightness() < 128 else 'black'}; font-weight: bold;")
 
-    def get_style(self):
+    def get_style(self, read_controls=False):
         # Legge i valori dai controlli e li mette nel dizionario self.style
         self.style['header_font_size'] = self.header_size.value()
         self.style['product_title_size'] = self.prod_title.value()
@@ -2023,9 +2023,12 @@ class CatalogoMainWindow(QMainWindow):
             if not testo.strip(): return
             log_path = 'debug_log.txt' if (include_logs and os.path.exists('debug_log.txt')) else None
             try:
+                QApplication.setOverrideCursor(Qt.WaitCursor)
                 invia_email("g.marino787@gmail.com", f"Supporto App v{APP_VERSION}", testo, log_path)
+                QApplication.restoreOverrideCursor()
                 QMessageBox.information(self, "Inviato", "Il tuo messaggio è stato inviato all'assistenza.")
             except Exception as e:
+                QApplication.restoreOverrideCursor()
                 logging.error(f"Errore invio mail supporto: {e}")
                 QMessageBox.critical(self, "Errore", f"Impossibile inviare la mail: {e}")
 
@@ -2408,10 +2411,16 @@ class CatalogoMainWindow(QMainWindow):
         if row >= 0:
             path = self.cataloghi_dashboard_table.item(row, 0).data(Qt.UserRole + 1)
             if path and os.path.exists(path):
-                 destinatario, ok = QInputDialog.getText(self, 'Destinatario', 'Email destinatario:')
-                 if ok and destinatario:
-                    invia_email(destinatario, 'Catalogo Prodotti', 'Ecco il catalogo in allegato.', path)
-                    QMessageBox.information(self, 'Inviato', 'Email inviata con successo.')
+                destinatario, ok = QInputDialog.getText(self, 'Destinatario', 'Email destinatario:')
+                if ok and destinatario:
+                    try:
+                        QApplication.setOverrideCursor(Qt.WaitCursor)
+                        invia_email(destinatario, 'Catalogo Prodotti', 'Ecco il catalogo in allegato.', path)
+                        QMessageBox.information(self, 'Inviato', 'Email inviata con successo.')
+                    except Exception as e:
+                        QMessageBox.critical(self, 'Errore Invio', f"Impossibile inviare l'email:\n{e}")
+                    finally:
+                        QApplication.restoreOverrideCursor()
             else:
                 QMessageBox.warning(self, "Errore", "File non trovato.")
 
@@ -2494,7 +2503,7 @@ class CatalogoMainWindow(QMainWindow):
 
         # Aggiorna la combo del dialogo di generazione catalogo, se esiste
         try:
-            if hasattr(self, 'cat_tipologia_combo') and self.cat_tipologia_combo:
+            if hasattr(self, 'cat_tipologia_combo') and self.cat_tipologia_combo and not self.cat_tipologia_combo.isHidden():
                 current_cat_selection = self.cat_tipologia_combo.currentText()
                 self.cat_tipologia_combo.clear()
                 self.cat_tipologia_combo.addItem("Tutte")
@@ -2505,7 +2514,7 @@ class CatalogoMainWindow(QMainWindow):
 
         # Aggiorna anche la combo della pagina gestione tipologie
         try:
-            if hasattr(self, 'gest_tipo_combo') and self.gest_tipo_combo:
+            if hasattr(self, 'gest_tipo_combo') and self.gest_tipo_combo and not self.gest_tipo_combo.isHidden():
                 current_gest_selection = self.gest_tipo_combo.currentText()
                 self.gest_tipo_combo.clear()
                 self.gest_tipo_combo.addItems(tipologie)
