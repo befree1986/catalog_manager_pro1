@@ -30,6 +30,29 @@ def sync_iss_version(version):
             f.write(new_content)
         print("Sincronizzata versione anche nel file .iss")
 
+def run_pyinstaller():
+    """Esegue PyInstaller per generare l'eseguibile aggiornato."""
+    print("Avvio build eseguibile con PyInstaller...")
+    try:
+        # Usiamo sys.executable per assicurarci di usare lo stesso interprete corrente
+        # Aggiungiamo --noconfirm per sovrascrivere la build precedente senza chiedere
+        subprocess.run([sys.executable, "-m", "PyInstaller", "--noconsole", "--noconfirm", "main.py"], check=True)
+        print("Eseguibile generato con successo nella cartella 'dist'.")
+    except subprocess.CalledProcessError as e:
+        print(f"Errore durante l'esecuzione di PyInstaller: {e}")
+        sys.exit(1)
+
+def run_inno_setup():
+    """Esegue il compilatore Inno Setup per generare l'installer aggiornato."""
+    iscc_path = r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+    iss_path = os.path.join(os.path.dirname(__file__), 'setup_script.iss')
+    if os.path.exists(iscc_path) and os.path.exists(iss_path):
+        print(f"Avvio compilazione installer: {iss_path}...")
+        subprocess.run([iscc_path, iss_path], check=True)
+        print("Installer generato con successo.")
+    else:
+        print("Avviso: Compilatore Inno Setup (ISCC.exe) non trovato o setup_script.iss mancante. Compila manualmente.")
+
 def get_app_version_from_main_py(main_py_path):
     """Legge APP_VERSION dal file main.py."""
     with open(main_py_path, 'r', encoding='utf-8') as f:
@@ -154,6 +177,14 @@ if __name__ == "__main__":
         
         # 1. Aggiorna version.json localmente e pusha su GitHub
         update_version_json(new_version)
+
+        # 1b. Genera l'eseguibile .exe aggiornato
+        run_pyinstaller()
+        
+        # Sincronizza la versione nel file .iss e compila l'installer
+        sync_iss_version(new_version)
+        run_inno_setup()
+        
         git_commit_and_push(new_version)
         
         # 2. Crea la GitHub Release e carica l'installer
