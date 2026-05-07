@@ -25,7 +25,6 @@ def sync_iss_version(version):
         with open(iss_path, 'r') as f:
             content = f.read()
         # Sostituisce la versione definita nel file .iss
-        new_content = re.sub(r'#define AppVersion ".*"', f'#define AppVersion "{version}"', content)
         # Corretto MyAppVersion per coincidere con il file .iss
         new_content = re.sub(r'#define MyAppVersion ".*"', f'#define MyAppVersion "{version}"', content)
         with open(iss_path, 'w') as f:
@@ -68,8 +67,6 @@ def get_app_version_from_main_py(main_py_path):
     """Legge APP_VERSION dal file main.py."""
     with open(main_py_path, 'r', encoding='utf-8') as f:
         content = f.read()
-        # Accetta qualsiasi carattere alfanumerico (incluso 'b') all'interno delle virgolette
-        match = re.search(r'APP_VERSION\s*=\s*"([^"]+)"', content)
         # Regex più robusta: accetta sia ' che " e ignora spazi extra
         match = re.search(r"APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", content)
         if match:
