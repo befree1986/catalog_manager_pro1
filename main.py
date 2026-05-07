@@ -30,7 +30,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.1.5b" # Aggiornamento layout PDF e fix testi
+APP_VERSION = "1.1.5c" # Aggiornamento risconoscimento e ampliato funzionalità Mappatura Listini
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -442,15 +442,14 @@ class ColumnMappingDialog(QDialog):
         # Sezione dinamica per listini
         # Mostriamo tutte le colonne excel non ancora mappate (anche se qui le mostriamo tutte per semplicità)
         # L'utente può mappare una colonna a un listino
-        self.extra_listini_widget = QWidget()
-        self.extra_listini_container = QVBoxLayout()
-        self.extra_listini_widget.setLayout(self.extra_listini_container)
+        self.extra_listini_layout = QVBoxLayout() # Renamed for clarity and direct use
         
         btn_add_listino = QPushButton("➕ Aggiungi Mappatura Listino")
-        btn_add_listino.clicked.connect(lambda: self.add_listino_row(None, None, self.extra_listini_container))
+        # Pass self.extra_listini_layout directly
+        btn_add_listino.clicked.connect(lambda: self.add_listino_row(None, None, self.extra_listini_layout))
         
-        form_layout.addRow(self.extra_listini_widget)
-        form_layout.addRow(btn_add_listino)
+        form_layout.addRow(self.extra_listini_layout) # Add the layout directly
+        form_layout.addRow("Aggiungi Listino:", btn_add_listino) # Add label for consistency and better layout
         
         # Auto-detect listini
         self.detect_potential_price_lists()
@@ -522,7 +521,7 @@ class ColumnMappingDialog(QDialog):
                 if not any(col == self._find_best_match(tf, self.excel_columns) for tf in self.target_fields):
                      # Suggerisci come listino
                      suggested_name = col.title().replace("_", " ")
-                     self.add_listino_row(col, suggested_name, self.extra_listini_container)
+                     self.add_listino_row(col, suggested_name, self.extra_listini_layout) # Changed to self.extra_listini_layout
 
     def get_column_mappings(self):
         """Restituisce un dizionario di mappatura: {'target_field': 'excel_column_name'}."""
@@ -536,8 +535,8 @@ class ColumnMappingDialog(QDialog):
     def get_price_list_mappings(self):
         """Restituisce {colonna_excel: nome_listino}"""
         mappings = {}
-        for i in range(self.extra_listini_container.count()):
-            widget = self.extra_listini_container.itemAt(i).widget()
+        for i in range(self.extra_listini_layout.count()): # Changed to self.extra_listini_layout
+            widget = self.extra_listini_layout.itemAt(i).widget() # Changed to self.extra_listini_layout
             if widget:
                 col = widget.combo_col.currentText()
                 name = widget.line_name.text().strip()
