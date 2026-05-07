@@ -980,7 +980,7 @@ class CatalogoMainWindow(QMainWindow):
 
         # Avvia il controllo aggiornamenti automatico dopo un breve ritardo
         # per permettere all'UI di caricarsi completamente
-        QTimer.singleShot(5000, self.check_for_updates) # 5 secondi di ritardo
+        QTimer.singleShot(5000, lambda: self.check_for_updates(silent=True)) # 5 secondi di ritardo
 
     def _check_db_writable(self):
         """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
@@ -2320,7 +2320,7 @@ class CatalogoMainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "Attenzione", "Seleziona una tipologia e inserisci un nuovo nome.")
 
-    def check_for_updates(self):
+    def check_for_updates(self, silent=False):
         """Controlla la disponibilità di nuovi aggiornamenti verificando un file JSON remoto."""
         try:
             if not requests:
@@ -2371,17 +2371,21 @@ class CatalogoMainWindow(QMainWindow):
                 else:
                     QMessageBox.warning(self, "Errore Aggiornamento", "URL di download non trovato nel file di configurazione degli aggiornamenti.")
             else:
-                QMessageBox.information(self, "Aggiornato", 
-                    f"Hai già l'ultima versione ({APP_VERSION}).")
+                if not silent:
+                    QMessageBox.information(self, "Aggiornato", 
+                        f"Hai già l'ultima versione ({APP_VERSION}).")
                         
         except requests.exceptions.RequestException as re:
-            QMessageBox.warning(self, "Errore Aggiornamento", 
-                f"Impossibile connettersi al server di aggiornamento.\nControlla la tua connessione internet.\n\nDettaglio: {re}")
+            if not silent:
+                QMessageBox.warning(self, "Errore Aggiornamento", 
+                    f"Impossibile connettersi al server di aggiornamento.\nControlla la tua connessione internet.\n\nDettaglio: {re}")
         except json.JSONDecodeError:
-            QMessageBox.warning(self, "Errore Aggiornamento", "Impossibile leggere il file di configurazione degli aggiornamenti (JSON non valido).")
+            if not silent:
+                QMessageBox.warning(self, "Errore Aggiornamento", "Impossibile leggere il file di configurazione degli aggiornamenti (JSON non valido).")
         except Exception as e:
-            QMessageBox.critical(self, "Errore Aggiornamento", 
-                f"Si è verificato un errore inatteso durante il controllo aggiornamenti.\n\nDettaglio: {e}")
+            if not silent:
+                QMessageBox.critical(self, "Errore Aggiornamento", 
+                    f"Si è verificato un errore inatteso durante il controllo aggiornamenti.\n\nDettaglio: {e}")
 
 
     def start_auto_update(self, url):

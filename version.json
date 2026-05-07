@@ -1,5 +1,5 @@
 {
     "version": "1.1.5c",
     "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.5c/CatalogoManager_Setup.exe",
-    "notes": "- Integrazione Microsoft Visual C++ Redistributable nell'installer.\n- Nuovo sistema di assistenza tecnica diretta via email.\n- Migliorata condivisione WhatsApp con apertura cartella automatica.\n- Fix bug grafico nella mappatura dei listini prezzi extra."
+    "notes": "- Risolto bug nel tasto 'Aggiungi Mappatura Listino' che non rispondeva.\n- Migliorato il sistema di riconoscimento delle versioni (es. 1.1.5c).\n- Ottimizzata la procedura di controllo aggiornamenti all'avvio.\n- Corretta la logica di sincronizzazione con il repository GitHub."
 }

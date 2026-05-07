@@ -83,10 +83,10 @@ def update_version_json(version):
         "version": version,
         "url": download_url,
         "notes": (
-            "- Integrazione Microsoft Visual C++ Redistributable nell'installer.\n"
-            "- Nuovo sistema di assistenza tecnica diretta via email.\n"
-            "- Migliorata condivisione WhatsApp con apertura cartella automatica.\n"
-            "- Fix bug grafico nella mappatura dei listini prezzi extra."
+            "- Risolto bug nel tasto 'Aggiungi Mappatura Listino' che non rispondeva.\n"
+            "- Migliorato il sistema di riconoscimento delle versioni (es. 1.1.5c).\n"
+            "- Ottimizzata la procedura di controllo aggiornamenti all'avvio.\n"
+            "- Corretta la logica di sincronizzazione con il repository GitHub."
         )
     }
     
@@ -98,17 +98,22 @@ def update_version_json(version):
 def git_commit_and_push(version):
     """Aggiunge, committa e pusha version.json su GitHub."""
     try:
-        subprocess.run(['git', 'add', VERSION_JSON_PATH], check=True)
-        # Aggiungiamo anche main.py per salvare il cambio versione nel repository
-        subprocess.run(['git', 'add', MAIN_PY_PATH], check=True)
-        print(f"Aggiunto {VERSION_JSON_PATH} all'area di staging di Git.")
+        # Aggiungiamo TUTTE le modifiche (incluso pdf_export.py, import_utils.py, ecc.)
+        subprocess.run(['git', 'add', '.'], check=True)
+        print(f"File preparati per Git (staging).")
 
-        commit_message = f"Update version.json and main.py to v{version}"
-        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
-        print(f"Commit effettuato con messaggio: '{commit_message}'.")
+        # Verifica se ci sono cambiamenti effettivi prima di committare per evitare crash
+        status = subprocess.run(['git', 'status', '--porcelain'], capture_output=True, text=True)
+        if status.stdout.strip():
+            commit_message = f"Update version.json and main.py to v{version}"
+            subprocess.run(['git', 'commit', '-m', commit_message], check=True)
+            print(f"Commit effettuato: '{commit_message}'.")
+        else:
+            print("Nessuna modifica rilevata nel repository Git, salto il commit.")
 
+        print(f"Invio dati a GitHub (push)...")
         subprocess.run(['git', 'push', 'origin', GITHUB_BRANCH], check=True)
-        print(f"Push effettuato sul branch {GITHUB_BRANCH} su GitHub.")
+        print("Push completato con successo.")
 
     except Exception as e:
         print(f"Si è verificato un errore inatteso durante le operazioni Git: {e}")
