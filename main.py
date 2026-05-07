@@ -30,7 +30,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.1.5c" # Aggiornamento risconoscimento e ampliato funzionalità Mappatura Listini
+APP_VERSION = "1.1.6" # Aggiornamento risconoscimento e ampliato funzionalità Mappatura Listini
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):

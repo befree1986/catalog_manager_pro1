@@ -1,5 +1,5 @@
 {
-    "version": "1.1.5c",
-    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.5c/CatalogoManager_Setup.exe",
-    "notes": "- Risolto bug nel tasto 'Aggiungi Mappatura Listino' che non rispondeva.\n- Migliorato il sistema di riconoscimento delle versioni (es. 1.1.5c).\n- Ottimizzata la procedura di controllo aggiornamenti all'avvio.\n- Corretta la logica di sincronizzazione con il repository GitHub."
+    "version": "1.1.6",
+    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.6/CatalogoManager_Setup.exe",
+    "notes": "- Inserisci qui le note per la nuova versione.\n- Ogni riga comparir\u00e0 nel popup di aggiornamento.\n- Lo script caricher\u00e0 questo testo automaticamente."
 }

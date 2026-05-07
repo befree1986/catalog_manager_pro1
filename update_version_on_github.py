@@ -19,6 +19,19 @@ GITHUB_REPO_OWNER = "befree1986"
 GITHUB_REPO_NAME = "catalog_manager_pro1"
 GITHUB_BRANCH = "main" # Il branch su cui vuoi pushare (es. main, master, release)
 
+def get_release_notes(version):
+    """Legge le note di rilascio da RELEASE_NOTES.txt o restituisce un default."""
+    RELEASE_NOTES_PATH = os.path.join(os.path.dirname(__file__), 'RELEASE_NOTES.txt')
+    if os.path.exists(RELEASE_NOTES_PATH):
+        try:
+            with open(RELEASE_NOTES_PATH, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:
+                    return content
+        except Exception as e:
+            print(f"Avviso: Errore nella lettura di RELEASE_NOTES.txt: {e}")
+    return f"Aggiornamento alla versione {version}."
+
 def sync_iss_version(version):
     iss_path = os.path.join(os.path.dirname(__file__), 'setup_script.iss')
     if os.path.exists(iss_path):
@@ -82,12 +95,7 @@ def update_version_json(version):
     version_data = {
         "version": version,
         "url": download_url,
-        "notes": (
-            "- Risolto bug nel tasto 'Aggiungi Mappatura Listino' che non rispondeva.\n"
-            "- Migliorato il sistema di riconoscimento delle versioni (es. 1.1.5c).\n"
-            "- Ottimizzata la procedura di controllo aggiornamenti all'avvio.\n"
-            "- Corretta la logica di sincronizzazione con il repository GitHub."
-        )
+        "notes": get_release_notes(version)
     }
     
     with open(VERSION_JSON_PATH, 'w') as f:
@@ -122,7 +130,7 @@ def create_github_release(version, installer_path):
     """Crea una GitHub Release e carica l'installer come asset."""
     tag_name = f"v{version}"
     release_name = f"Version {version}"
-    release_notes = f"Aggiornamento alla versione {version}." # Puoi personalizzare queste note
+    release_notes = get_release_notes(version) # La funzione è ora definita
 
     # Verifica se gh esiste nel sistema
     gh_path = shutil.which("gh")
