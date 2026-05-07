@@ -27,10 +27,17 @@ from prodotti_manager import lista_prodotti, aggiungi_prodotto, modifica_prodott
 from email_utils import invia_email
 from import_utils import get_access_tables, read_access_table, read_excel_df, importa_dataframe_nel_db
 from pdf_export import esporta_catalogo_pdf
-from db import init_db
+from db import init_db, DB_PATH
 
-APP_VERSION = "1.1.4" # Versione incrementata per risoluzione crash
+APP_VERSION = "1.1.5" # Aggiornamento layout PDF e fix testi
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
+
+def parse_version(v):
+    """Converte una stringa versione in una tupla di interi per confronti sicuri."""
+    try:
+        return tuple(map(int, v.split('.')))
+    except (ValueError, AttributeError):
+        return (0, 0, 0)
 
 class DownloadThread(QThread):
     progress = pyqtSignal(int)
@@ -906,7 +913,11 @@ class CatalogoMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Verifica se il database è scrivibile prima di procedere
+        # Controlla se siamo in modalità sviluppo tramite variabile d'ambiente
+        self.dev_mode = os.environ.get("CATALOG_DEV_MODE") == "1"
+        if self.dev_mode:
+            print(f"DEBUG: Avvio v{APP_VERSION} in modalità Anteprima Sviluppo")
+
         if not self._check_db_writable():
             logging.error("Avvio interrotto: Il database non è scrivibile. Verificare i permessi della cartella di installazione.")
             QMessageBox.critical(None, "Errore Permessi", 
@@ -915,7 +926,11 @@ class CatalogoMainWindow(QMainWindow):
                                  "(come Programmi senza permessi admin) o che il file non sia bloccato.")
             sys.exit(1)
 
-        self.backup_database() # Backup automatico all'avvio
+        if not self.dev_mode:
+            self.backup_database() # Salta backup lento in dev
+        else:
+            print("DEBUG: Backup automatico saltato.")
+
         init_db()  # Inizializza il database all'avvio
         self.setWindowTitle('Dashboard Catalogo')
         self.resize(1024, 768)
@@ -925,9 +940,10 @@ class CatalogoMainWindow(QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
 
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
         # File per salvare l'ordine custom delle categorie
-        self.category_order_file = "category_order.json"
-        self.catalog_structure_file = "catalog_structure.json" # Nuovo file per la struttura avanzata
+        self.category_order_file = os.path.join(self.base_dir, "category_order.json")
+        self.catalog_structure_file = os.path.join(self.base_dir, "catalog_structure.json")
 
         self.auto_save_config = self._load_auto_save_config()
         self._configure_auto_save_timer()
@@ -954,11 +970,10 @@ class CatalogoMainWindow(QMainWindow):
 
     def _check_db_writable(self):
         """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
-        db_path = 'catalogo.db'
         try:
-            if os.path.exists(db_path):
+            if os.path.exists(DB_PATH):
                 # Prova ad aprire il file esistente in modalità append per testare la scrittura
-                with open(db_path, 'a'):
+                with open(DB_PATH, 'a'):
                     pass
             else:
                 # Se non esiste, testa se è possibile creare un file nella directory corrente
@@ -974,25 +989,21 @@ class CatalogoMainWindow(QMainWindow):
     def get_valid_image_path(self, relative_path):
         if not relative_path or not isinstance(relative_path, str):
             return ""
-        
+
         path = relative_path.strip()
 
         # 1. Check if it's already a valid absolute path
         if os.path.isabs(path) and os.path.exists(path):
             return path
-        
+
         # 2. Check if it's a valid path relative to the CWD
         if os.path.exists(path):
             return os.path.abspath(path)
 
-        # 3. Check relative to the script's directory (for bundled resources)
-        try:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            potential_path = os.path.join(base_dir, path)
-            if os.path.exists(potential_path):
-                return potential_path
-        except NameError: # __file__ is not defined in some contexts (e.g. interactive)
-            pass
+        # 3. Check relative to the script's directory
+        potential_path = os.path.join(self.base_dir, path)
+        if os.path.exists(potential_path):
+            return potential_path
 
         return "" # No valid path found
 
@@ -1071,7 +1082,7 @@ class CatalogoMainWindow(QMainWindow):
 
     def backup_database(self):
         """Crea una copia di backup del database catalogo.db nella cartella 'backups'"""
-        if not os.path.exists('catalogo.db'):
+        if not os.path.exists(DB_PATH):
             return
             
         backup_dir = 'backups'
@@ -1085,7 +1096,7 @@ class CatalogoMainWindow(QMainWindow):
         backup_path = os.path.join(backup_dir, f'catalogo_backup_{timestamp}.db')
         
         try:
-            shutil.copy2('catalogo.db', backup_path)
+            shutil.copy2(DB_PATH, backup_path)
             # Opzionale: Mantieni solo gli ultimi 10 backup per risparmiare spazio
             backups = sorted([os.path.join(backup_dir, f) for f in os.listdir(backup_dir) if f.startswith('catalogo_backup_')])
             while len(backups) > 10:
@@ -1097,7 +1108,7 @@ class CatalogoMainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(self, 'Salva Backup Database', f'catalogo_backup_{datetime.datetime.now().strftime("%Y%m%d")}.db', 'SQLite DB (*.db)')
         if file_path:
             try:
-                shutil.copy2('catalogo.db', file_path)
+                shutil.copy2(DB_PATH, file_path)
                 QMessageBox.information(self, "Backup", "Backup esportato con successo!")
             except Exception as e:
                 QMessageBox.critical(self, "Errore", f"Impossibile creare il backup: {e}")
@@ -1840,7 +1851,7 @@ class CatalogoMainWindow(QMainWindow):
         profile_layout.addWidget(QLabel("<b>Profilo:</b>"))
         
         self.profile_combo = QComboBox()
-        self.profiles_file = "catalog_profiles.json"
+        self.profiles_file = os.path.join(self.base_dir, "catalog_profiles.json")
         self.profiles = self.load_profiles()
         self.profile_combo.addItems(sorted(self.profiles.keys()))
         if "Default" not in self.profiles:
@@ -2040,7 +2051,7 @@ class CatalogoMainWindow(QMainWindow):
 
     def _load_auto_save_config(self):
         """Carica la configurazione di salvataggio automatico da file o usa default."""
-        config_file = "autosave_config.json"
+        config_file = os.path.join(self.base_dir, "autosave_config.json")
         if os.path.exists(config_file):
             try:
                 with open(config_file, 'r') as f:
@@ -2052,7 +2063,8 @@ class CatalogoMainWindow(QMainWindow):
     def _save_auto_save_config(self):
         """Salva la configurazione corrente su file."""
         try:
-            with open("autosave_config.json", 'w') as f:
+            config_file = os.path.join(self.base_dir, "autosave_config.json")
+            with open(config_file, 'w') as f:
                 json.dump(self.auto_save_config, f, indent=4)
         except Exception as e:
             print(f"Errore durante il salvataggio della configurazione: {e}")
@@ -2077,7 +2089,7 @@ class CatalogoMainWindow(QMainWindow):
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
         dest = os.path.join(autosave_dir, f'autosave_{timestamp}.db')
         try:
-            shutil.copy2('catalogo.db', dest)
+            shutil.copy2(DB_PATH, dest)
         except:
             pass
 
@@ -2300,8 +2312,8 @@ class CatalogoMainWindow(QMainWindow):
             download_url = data.get('url')
             notes = data.get('notes', '')
 
-            # Confronto versioni basilare (stringa)
-            if latest_version > APP_VERSION:
+            # Confronto versioni corretto (numerico)
+            if parse_version(latest_version) > parse_version(APP_VERSION):
                 # 1. Notifica l'utente tramite sistema
                 if notification:
                     try:
@@ -2862,8 +2874,9 @@ class CatalogoMainWindow(QMainWindow):
 
 if __name__ == '__main__':
     # Configurazione del sistema di logging
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     logging.basicConfig(
-        filename='debug_log.txt',
+        filename=os.path.join(base_dir, 'debug_log.txt'),
         level=logging.ERROR,
         format='%(asctime)s - %(levelname)s - %(message)s',
         encoding='utf-8'

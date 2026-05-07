@@ -1,7 +1,11 @@
 import sqlite3
+import os
+
+# Definiamo un percorso assoluto per il database basato sulla posizione dello script
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'catalogo.db')
 
 def init_db():
-    conn = sqlite3.connect('catalogo.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS prodotti (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

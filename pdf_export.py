@@ -1,6 +1,7 @@
 from fpdf import FPDF
 import sqlite3
 import os
+from db import DB_PATH
 
 class CatalogoPDF(FPDF):
     def __init__(self, config=None):
@@ -90,21 +91,21 @@ class CatalogoPDF(FPDF):
         self.set_font('Arial', 'B', style.get('product_title_size', 14))
         r, g, b = self.primary_color
         self.set_text_color(r, g, b)
-        self.cell(0, 8, nome, 0, 1)
+        self.multi_cell(110, 6, nome, 0, 'L')
         
         # Codice SKU
         if codice:
-            self.set_x(50)
+            self.set_xy(50, self.get_y())
             self.set_font('Arial', '', style.get('sku_size', 9))
             self.set_text_color(80, 80, 80)
             self.cell(0, 4, f"SKU: {codice}", 0, 1)
         
-        self.set_x(50)
+        self.set_xy(50, self.get_y())
         self.set_font('Arial', 'I', style.get('cat_size', 10))
         self.set_text_color(100, 100, 100)
         self.cell(0, 5, categoria if categoria else "Nessuna Categoria", 0, 1)
         
-        self.set_x(50)
+        self.set_xy(50, self.get_y())
         # Descrizione
         self.set_font('Arial', '', style.get('desc_size', 12))
         self.set_text_color(0, 0, 0)
@@ -139,18 +140,18 @@ class CatalogoPDF(FPDF):
         self.set_y(start_y + 45) # Spazio per il prossimo
 
     def scheda_prodotto_grid(self, nome, categoria, descrizione, prezzo, immagine, x, y, w, h, tiers):
-        self.set_xy(x, y)
         self.set_draw_color(220, 220, 220)
         self.rect(x, y, w, h)
 
         # Immagine centrata (occupa circa 55% altezza)
         img_h = h * 0.55
+        img_w_max = w - 10
         img_path = immagine.strip() if immagine else ""
         
         if img_path and os.path.exists(img_path):
             try:
-                # Centra immagine orizzontalmente
-                self.image(img_path, x=x+5, y=y+5, w=w-10, h=img_h-5)
+                # Adattamento automatico con mantenimento proporzioni
+                self.image(img_path, x=x+5, y=y+5, w=img_w_max, h=img_h-5, keep_aspect_ratio=True)
             except:
                 pass        
 
@@ -158,7 +159,6 @@ class CatalogoPDF(FPDF):
         style = self.config.get('style', {})
         
         # Titolo Prodotto in Griglia
-        self.set_xy(x + 2, text_y)
         grid_title_size = style.get('grid_title_size', 10)
         self.set_font('Arial', 'B', grid_title_size)
         
@@ -166,18 +166,25 @@ class CatalogoPDF(FPDF):
         r, g, b = self._hex_to_rgb(grid_title_color)
         self.set_text_color(r, g, b)
 
-        self.cell(w-4, 5, nome[:30], 0, 1, 'C') # Tronca nome se troppo lungo
+        # Adattamento automatico del font se il nome è molto lungo
+        nome_pulito = nome.replace('\n', ' ').strip()
+        if len(nome_pulito) > 30:
+            self.set_font('Arial', 'B', grid_title_size - 1)
+            
+        self.set_xy(x + 2, text_y)
+        # multi_cell permette l'andata a capo automatica nel box
+        self.multi_cell(w - 4, 4.5, nome_pulito, 0, 'C')
         
         if self.config.get('show_prices', True):
+            price_y = self.get_y() + 1
             if tiers and len(tiers) > 1:
                 # Tabella compatta per griglia
-                table_y = text_y + 6
                 row_h = 4
                 self.set_font('Arial', '', 7)
                 self.set_text_color(0,0,0)
                 
                 # Header
-                self.set_xy(x + 5, table_y)
+                self.set_xy(x + 5, price_y)
                 self.cell(w-10, row_h, "Prezzi per quantità:", 0, 1, 'L')
                 
                 for qty, prc in tiers:
@@ -185,7 +192,7 @@ class CatalogoPDF(FPDF):
                     self.cell(15, row_h, f"{qty}+ pz", 0, 0, 'L')
                     self.cell(20, row_h, f"EUR {prc:.2f}", 0, 1, 'L')
             else:
-                self.set_x(x + 2)
+                self.set_xy(x + 2, price_y + 2)
                 self.set_font('Arial', 'B', style.get('grid_price_size', 11))
 
                 grid_price_color = style.get('grid_price_color', '#27ae60')
@@ -196,7 +203,7 @@ class CatalogoPDF(FPDF):
                 self.set_text_color(0, 0, 0) # Reset
 
 def get_catalog_data(config):
-    conn = sqlite3.connect('catalogo.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     # Filtro Categoria
@@ -297,6 +304,12 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
         row_y = pdf.get_y()
         
         for row_data in prodotti:
+            # Controllo nuova pagina solo all'inizio di ogni riga
+            if current_col == 0:
+                if row_y > 280 - box_h:
+                    pdf.add_page()
+                    row_y = pdf.get_y()
+
             # Unpack sicuro
             nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4 = row_data
             
@@ -312,11 +325,6 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
             if p3 > 0 and q3 > 0: tiers.append((q3, p3))
             if p4 > 0 and q4 > 0: tiers.append((q4, p4))
 
-            if pdf.get_y() > 280 - box_h: # Controllo nuova pagina (297 - margine - altezza box)
-                pdf.add_page()
-                row_y = pdf.get_y()
-                current_col = 0
-            
             x = margin + (current_col * (col_w + col_gap))
             pdf.scheda_prodotto_grid(nome, cat, descrizione, prezzo, immagine, x, row_y, col_w, box_h, tiers)
             
@@ -324,7 +332,6 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
             if current_col >= num_cols:
                 current_col = 0
                 row_y += box_h + 5 # Altezza box + margine verticale
-                pdf.set_y(row_y)
     else:
         for row_data in prodotti:
             nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4 = row_data

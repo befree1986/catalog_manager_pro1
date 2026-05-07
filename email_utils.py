@@ -6,9 +6,10 @@ from email.mime.text import MIMEText
 from email import encoders
 
 def invia_email(destinatario, oggetto, corpo, allegato=None):
-    # Inserisci qui il tuo indirizzo Gmail e la password di 16 caratteri generata
-    mittente = 'tuo_account@gmail.com' 
-    password = 'abcd efgh ilmn opqr'   
+    # TODO: Le credenziali del mittente sono hardcoded. Questo è un rischio di sicurezza.
+    # Dovrebbero essere configurate dall'utente tramite l'interfaccia o caricate in modo sicuro.
+    mittente = 'tuo_account@gmail.com'
+    password = 'abcd efgh ilmn opqr'
     
     msg = MIMEMultipart()
     msg['From'] = mittente
