@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import re
 import datetime
 import json
 import logging
@@ -29,13 +30,18 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.1.5" # Aggiornamento layout PDF e fix testi
+APP_VERSION = "1.1.5b" # Aggiornamento layout PDF e fix testi
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
     """Converte una stringa versione in una tupla di interi per confronti sicuri."""
     try:
-        return tuple(map(int, v.split('.')))
+        # Estrae solo i numeri iniziali da ogni parte (es: "5b" viene trattato come 5)
+        parts = []
+        for part in v.split('.'):
+            match = re.search(r"(\d+)", part)
+            parts.append(int(match.group(1)) if match else 0)
+        return tuple(parts)
     except (ValueError, AttributeError):
         return (0, 0, 0)
 
@@ -1178,6 +1184,11 @@ class CatalogoMainWindow(QMainWindow):
         update_action.triggered.connect(self.check_for_updates)
         help_menu.addAction(update_action)
 
+        # Nuovo: Informazioni sull'applicazione
+        about_action = QAction('Informazioni su...', self)
+        about_action.triggered.connect(self.show_about_dialog)
+        help_menu.addAction(about_action)
+
     def init_ui(self):
         self.apply_styles()
         
@@ -2302,10 +2313,28 @@ class CatalogoMainWindow(QMainWindow):
             QMessageBox.warning(self, "Attenzione", "Seleziona una tipologia e inserisci un nuovo nome.")
 
     def check_for_updates(self):
-        """Simula il controllo aggiornamenti verificando un file JSON remoto."""
+        """Controlla la disponibilità di nuovi aggiornamenti verificando un file JSON remoto."""
         try:
             if not requests:
-                raise ImportError("Libreria 'requests' non trovata.")
+                QMessageBox.warning(self, "Errore Aggiornamento", 
+                                    "La libreria 'requests' non è installata. Impossibile controllare gli aggiornamenti.\n"
+                                    "Per abilitare questa funzionalità, installa 'requests' tramite pip.")
+                return
+            
+            # Carica le note di rilascio dal file locale per il confronto
+            local_version_data = {}
+            version_json_path = os.path.join(self.base_dir, 'version.json')
+            if os.path.exists(version_json_path):
+                try:
+                    with open(version_json_path, 'r', encoding='utf-8') as f:
+                        local_version_data = json.load(f)
+                except Exception as e:
+                    logging.warning(f"Impossibile leggere il file version.json locale: {e}")
+            
+            # Usa le note locali come fallback se non ci sono note remote
+            current_notes = local_version_data.get('notes', 'Nessuna nota di rilascio disponibile.')
+
+            # Effettua la richiesta al server remoto
             response = requests.get(UPDATE_URL, timeout=5)
             data = response.json()
             latest_version = data.get('version')
@@ -2319,25 +2348,33 @@ class CatalogoMainWindow(QMainWindow):
                     try:
                         notification.notify(
                             title='Aggiornamento Disponibile',
-                            message=f'La versione {latest_version} è in fase di download automatico.',
+                            message=f'La versione {latest_version} è in fase di download automatico.\n\nNovità:\n{notes}',
                             app_name='Catalogo Manager Pro',
                             timeout=10
                         )
-                    except:
-                        pass
+                    except Exception as notif_e:
+                        logging.warning(f"Errore durante la notifica plyer: {notif_e}")
                 
                 # 2. Avvia il download automaticamente in background
                 if download_url:
+                    self.pending_update_version = latest_version
+                    self.pending_update_notes = notes
                     self.start_auto_update(download_url)
                 else:
-                    print("Errore: URL di download non trovato nel JSON.")
+                    QMessageBox.warning(self, "Errore Aggiornamento", "URL di download non trovato nel file di configurazione degli aggiornamenti.")
             else:
                 QMessageBox.information(self, "Aggiornato", 
                     f"Hai già l'ultima versione ({APP_VERSION}).")
                         
-        except Exception as e:
+        except requests.exceptions.RequestException as re:
             QMessageBox.warning(self, "Errore Aggiornamento", 
-                f"Impossibile verificare gli aggiornamenti.\nControlla la tua connessione internet.\n\nDettaglio: {e}")
+                f"Impossibile connettersi al server di aggiornamento.\nControlla la tua connessione internet.\n\nDettaglio: {re}")
+        except json.JSONDecodeError:
+            QMessageBox.warning(self, "Errore Aggiornamento", "Impossibile leggere il file di configurazione degli aggiornamenti (JSON non valido).")
+        except Exception as e:
+            QMessageBox.critical(self, "Errore Aggiornamento", 
+                f"Si è verificato un errore inatteso durante il controllo aggiornamenti.\n\nDettaglio: {e}")
+
 
     def start_auto_update(self, url):
         # Crea percorso temporaneo per l'installer
@@ -2358,8 +2395,15 @@ class CatalogoMainWindow(QMainWindow):
 
     def install_update(self, file_path):
         self.update_progress.close()
-        reply = QMessageBox.question(self, "Download Completato", 
-                                     "L'aggiornamento è stato scaricato. L'applicazione verrà chiusa per avviare l'installazione. Continuare?",
+
+        new_version = getattr(self, 'pending_update_version', 'Sconosciuta')
+        notes = getattr(self, 'pending_update_notes', 'Nessuna nota disponibile.')
+
+        message = (f"L'aggiornamento alla versione {new_version} è stato scaricato.\n\n"
+                   f"<b>Novità:</b>\n{notes}\n\n"
+                   "L'applicazione verrà chiusa per avviare l'installazione. Continuare?")
+        
+        reply = QMessageBox.question(self, "Download Completato", message,
                                      QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             try:
@@ -2409,6 +2453,27 @@ class CatalogoMainWindow(QMainWindow):
             self.cataloghi_dashboard_table.item(i, 0).setData(Qt.UserRole, c[0])
             self.cataloghi_dashboard_table.item(i, 0).setData(Qt.UserRole + 1, c[3]) # Path
 
+    def show_about_dialog(self):
+        """Mostra un dialogo con le informazioni sulla versione e il copyright."""
+        # Leggi il publisher da license.txt
+        publisher = "BeFree" # Default
+        license_path = os.path.join(self.base_dir, 'license.txt')
+        if os.path.exists(license_path):
+            try:
+                with open(license_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    match = re.search(r"Marino G\. concede all'utente una licenza personale", content)
+                    if match:
+                        publisher = "Marino G."
+            except Exception as e:
+                logging.warning(f"Impossibile leggere license.txt per il publisher: {e}")
+
+        QMessageBox.about(self, "Informazioni su Catalogo Manager Pro",
+                          f"<b>Catalogo Manager Pro</b><br>"
+                          f"Versione: {APP_VERSION}<br>"
+                          f"Sviluppato da: {publisher}<br>"
+                          f"Copyright © {datetime.datetime.now().year} {publisher}. Tutti i diritti riservati.<br><br>"
+                          f"Per maggiori informazioni, visita <a href='{UPDATE_URL}'>GitHub</a>.")
     def apri_catalogo_selezionato(self):
         row = self.cataloghi_dashboard_table.currentRow()
         if row >= 0:
