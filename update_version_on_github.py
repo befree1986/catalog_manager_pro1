@@ -103,23 +103,6 @@ def git_commit_and_push(version):
         subprocess.run(['git', 'add', MAIN_PY_PATH], check=True)
         print(f"Aggiunto {VERSION_JSON_PATH} all'area di staging di Git.")
 
-        # Verifica se ci sono effettivamente cambiamenti da committare
-        # Ritorna 0 se non ci sono differenze, 1 se ce ne sono
-        diff_check = subprocess.run(['git', 'diff', '--cached', '--quiet'])
-        
-        if diff_check.returncode == 0:
-            print("Il file version.json è già aggiornato nel repository. Salto il commit.")
-        else:
-            commit_message = f"Update version.json to v{version}"
-            subprocess.run(['git', 'commit', '-m', commit_message], check=True)
-            print(f"Commit effettuato con messaggio: '{commit_message}'.")
-
-        subprocess.run(['git', 'push', 'origin', GITHUB_BRANCH], check=True)
-        print(f"Push effettuato sul branch {GITHUB_BRANCH} su GitHub.")
-
-    except subprocess.CalledProcessError as e:
-        print(f"Errore durante l'operazione Git: {e}")
-        print(f"Il comando '{' '.join(e.cmd)}' ha restituito un codice di uscita non zero {e.returncode}.")
         sys.exit(1)
     except Exception as e:
         print(f"Si è verificato un errore inatteso durante le operazioni Git: {e}")
