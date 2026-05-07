@@ -1,21 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
-import importlib.util
+
 
 a = Analysis(
     ['main.py'],
-    pathex=[os.getcwd()],
+    pathex=[],
     binaries=[],
-    datas=[('icon.png', '.')],
-    hiddenimports=['prodotto_dialog', 'prodotti_manager', 'email_utils', 'import_utils', 'pdf_export', 'db'],
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes= [],
+    excludes=[],
     noarchive=False,
     optimize=0,
 )
-pyz = PYZ(a.pure, a.zipped_data)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
@@ -36,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.png'],
-    )
+)

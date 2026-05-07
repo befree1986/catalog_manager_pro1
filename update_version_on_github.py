@@ -26,6 +26,8 @@ def sync_iss_version(version):
             content = f.read()
         # Sostituisce la versione definita nel file .iss
         new_content = re.sub(r'#define AppVersion ".*"', f'#define AppVersion "{version}"', content)
+        # Corretto MyAppVersion per coincidere con il file .iss
+        new_content = re.sub(r'#define MyAppVersion ".*"', f'#define MyAppVersion "{version}"', content)
         with open(iss_path, 'w') as f:
             f.write(new_content)
         print("Sincronizzata versione anche nel file .iss")
@@ -36,7 +38,16 @@ def run_pyinstaller():
     try:
         # Usiamo sys.executable per assicurarci di usare lo stesso interprete corrente
         # Aggiungiamo --noconfirm per sovrascrivere la build precedente senza chiedere
-        subprocess.run([sys.executable, "-m", "PyInstaller", "--noconsole", "--noconfirm", "main.py"], check=True)
+        # Usiamo --onefile e --name per far coincidere l'output con quanto atteso da Inno Setup
+        subprocess.run([
+            sys.executable, 
+            "-m", "PyInstaller", 
+            "--noconsole", 
+            "--noconfirm", 
+            "--onefile", 
+            "--name", "CatalogoApp", 
+            "main.py"
+        ], check=True)
         print("Eseguibile generato con successo nella cartella 'dist'.")
     except subprocess.CalledProcessError as e:
         print(f"Errore durante l'esecuzione di PyInstaller: {e}")
@@ -57,7 +68,10 @@ def get_app_version_from_main_py(main_py_path):
     """Legge APP_VERSION dal file main.py."""
     with open(main_py_path, 'r', encoding='utf-8') as f:
         content = f.read()
-        match = re.search(r"APP_VERSION = \"(\d+\.\d+\.\d+)\"", content)
+        # Accetta qualsiasi carattere alfanumerico (incluso 'b') all'interno delle virgolette
+        match = re.search(r'APP_VERSION\s*=\s*"([^"]+)"', content)
+        # Regex più robusta: accetta sia ' che " e ignora spazi extra
+        match = re.search(r"APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", content)
         if match:
             return match.group(1)
     raise ValueError(f"APP_VERSION non trovato in {main_py_path}")
@@ -88,6 +102,8 @@ def git_commit_and_push(version):
     """Aggiunge, committa e pusha version.json su GitHub."""
     try:
         subprocess.run(['git', 'add', VERSION_JSON_PATH], check=True)
+        # Aggiungiamo anche main.py per salvare il cambio versione nel repository
+        subprocess.run(['git', 'add', MAIN_PY_PATH], check=True)
         print(f"Aggiunto {VERSION_JSON_PATH} all'area di staging di Git.")
 
         # Verifica se ci sono effettivamente cambiamenti da committare
