@@ -103,11 +103,16 @@ def git_commit_and_push(version):
         subprocess.run(['git', 'add', MAIN_PY_PATH], check=True)
         print(f"Aggiunto {VERSION_JSON_PATH} all'area di staging di Git.")
 
-        sys.exit(1)
+        commit_message = f"Update version.json and main.py to v{version}"
+        subprocess.run(['git', 'commit', '-m', commit_message], check=True)
+        print(f"Commit effettuato con messaggio: '{commit_message}'.")
+
+        subprocess.run(['git', 'push', 'origin', GITHUB_BRANCH], check=True)
+        print(f"Push effettuato sul branch {GITHUB_BRANCH} su GitHub.")
+
     except Exception as e:
         print(f"Si è verificato un errore inatteso durante le operazioni Git: {e}")
         sys.exit(1)
-
 def create_github_release(version, installer_path):
     """Crea una GitHub Release e carica l'installer come asset."""
     tag_name = f"v{version}"
