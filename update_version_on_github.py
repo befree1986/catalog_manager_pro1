@@ -19,6 +19,17 @@ GITHUB_REPO_OWNER = "befree1986"
 GITHUB_REPO_NAME = "catalog_manager_pro1"
 GITHUB_BRANCH = "main" # Il branch su cui vuoi pushare (es. main, master, release)
 
+def sync_iss_version(version):
+    iss_path = os.path.join(os.path.dirname(__file__), 'setup_script.iss')
+    if os.path.exists(iss_path):
+        with open(iss_path, 'r') as f:
+            content = f.read()
+        # Sostituisce la versione definita nel file .iss
+        new_content = re.sub(r'#define AppVersion ".*"', f'#define AppVersion "{version}"', content)
+        with open(iss_path, 'w') as f:
+            f.write(new_content)
+        print("Sincronizzata versione anche nel file .iss")
+
 def get_app_version_from_main_py(main_py_path):
     """Legge APP_VERSION dal file main.py."""
     with open(main_py_path, 'r', encoding='utf-8') as f:
