@@ -35,15 +35,20 @@ UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/
 
 def parse_version(v):
     """Converte una stringa versione in una tupla di interi per confronti sicuri."""
-    try:
-        # Estrae solo i numeri iniziali da ogni parte (es: "5b" viene trattato come 5)
-        parts = []
-        for part in v.split('.'):
-            match = re.search(r"(\d+)", part)
-            parts.append(int(match.group(1)) if match else 0)
-        return tuple(parts)
-    except (ValueError, AttributeError):
-        return (0, 0, 0)
+    # Converte una stringa versione in una tupla di interi e stringhe per confronti sicuri.
+    # Gestisce suffissi alfanumerici (es. 1.1.5b < 1.1.5c)
+    parts = []
+    for part in v.split('.'):
+        num_match = re.match(r"(\d+)", part)
+        if num_match:
+            parts.append(int(num_match.group(1)))
+            remaining = part[len(num_match.group(1)):]
+            if remaining:
+                parts.append(remaining) # Aggiunge il suffisso alfanumerico come stringa
+        else:
+            # Se una parte è interamente non numerica (es. "beta"), la tratta come stringa
+            parts.append(part)
+    return tuple(parts)
 
 class DownloadThread(QThread):
     progress = pyqtSignal(int)
@@ -972,6 +977,10 @@ class CatalogoMainWindow(QMainWindow):
         self.init_ui()
         # Caricamento iniziale dati
         self.switch_page(0) 
+
+        # Avvia il controllo aggiornamenti automatico dopo un breve ritardo
+        # per permettere all'UI di caricarsi completamente
+        QTimer.singleShot(5000, self.check_for_updates) # 5 secondi di ritardo
 
     def _check_db_writable(self):
         """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
