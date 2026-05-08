@@ -1,4 +1,4 @@
-Versione: 1.1.6c
+Versione: 1.1.7
 Correzioni e patch:
-Modificto la struttura di salvataggio dei db excel e dc Access per l'import dei prodotti
-Modificato il pulsante Opzione Listini Extra in modo da avere sempre il file aggiornato
+- Risolto il problema del salvataggio prodotti da Excel/Access (gestione valori vuoti).
+- Ripristinato il funzionamento del tasto 'Listini Extra' nel form di importazione.
