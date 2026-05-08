@@ -30,25 +30,20 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, im
 from pdf_export import esporta_catalogo_pdf
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.1.6" # Aggiornamento risconoscimento e ampliato funzionalità Mappatura Listini
+APP_VERSION = "1.1.6b" # Aggiornamento layout PDF e fix testi
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
     """Converte una stringa versione in una tupla di interi per confronti sicuri."""
-    # Converte una stringa versione in una tupla di interi e stringhe per confronti sicuri.
-    # Gestisce suffissi alfanumerici (es. 1.1.5b < 1.1.5c)
-    parts = []
-    for part in v.split('.'):
-        num_match = re.match(r"(\d+)", part)
-        if num_match:
-            parts.append(int(num_match.group(1)))
-            remaining = part[len(num_match.group(1)):]
-            if remaining:
-                parts.append(remaining) # Aggiunge il suffisso alfanumerico come stringa
-        else:
-            # Se una parte è interamente non numerica (es. "beta"), la tratta come stringa
-            parts.append(part)
-    return tuple(parts)
+    try:
+        # Estrae solo i numeri iniziali da ogni parte (es: "5b" viene trattato come 5)
+        parts = []
+        for part in v.split('.'):
+            match = re.search(r"(\d+)", part)
+            parts.append(int(match.group(1)) if match else 0)
+        return tuple(parts)
+    except (ValueError, AttributeError):
+        return (0, 0, 0)
 
 class DownloadThread(QThread):
     progress = pyqtSignal(int)
@@ -447,14 +442,13 @@ class ColumnMappingDialog(QDialog):
         # Sezione dinamica per listini
         # Mostriamo tutte le colonne excel non ancora mappate (anche se qui le mostriamo tutte per semplicità)
         # L'utente può mappare una colonna a un listino
-        self.extra_listini_layout = QVBoxLayout() # Renamed for clarity and direct use
+        self.extra_listini_layout = QVBoxLayout()
         
         btn_add_listino = QPushButton("➕ Aggiungi Mappatura Listino")
-        # Pass self.extra_listini_layout directly
         btn_add_listino.clicked.connect(lambda: self.add_listino_row(None, None, self.extra_listini_layout))
         
-        form_layout.addRow(self.extra_listini_layout) # Add the layout directly
-        form_layout.addRow("Aggiungi Listino:", btn_add_listino) # Add label for consistency and better layout
+        form_layout.addRow(self.extra_listini_layout)
+        form_layout.addRow("Nuovo Listino:", btn_add_listino)
         
         # Auto-detect listini
         self.detect_potential_price_lists()
@@ -526,7 +520,7 @@ class ColumnMappingDialog(QDialog):
                 if not any(col == self._find_best_match(tf, self.excel_columns) for tf in self.target_fields):
                      # Suggerisci come listino
                      suggested_name = col.title().replace("_", " ")
-                     self.add_listino_row(col, suggested_name, self.extra_listini_layout) # Changed to self.extra_listini_layout
+                     self.add_listino_row(col, suggested_name, self.extra_listini_layout)
 
     def get_column_mappings(self):
         """Restituisce un dizionario di mappatura: {'target_field': 'excel_column_name'}."""
@@ -540,8 +534,8 @@ class ColumnMappingDialog(QDialog):
     def get_price_list_mappings(self):
         """Restituisce {colonna_excel: nome_listino}"""
         mappings = {}
-        for i in range(self.extra_listini_layout.count()): # Changed to self.extra_listini_layout
-            widget = self.extra_listini_layout.itemAt(i).widget() # Changed to self.extra_listini_layout
+        for i in range(self.extra_listini_layout.count()):
+            widget = self.extra_listini_layout.itemAt(i).widget()
             if widget:
                 col = widget.combo_col.currentText()
                 name = widget.line_name.text().strip()
@@ -977,10 +971,6 @@ class CatalogoMainWindow(QMainWindow):
         self.init_ui()
         # Caricamento iniziale dati
         self.switch_page(0) 
-
-        # Avvia il controllo aggiornamenti automatico dopo un breve ritardo
-        # per permettere all'UI di caricarsi completamente
-        QTimer.singleShot(5000, lambda: self.check_for_updates(silent=True)) # 5 secondi di ritardo
 
     def _check_db_writable(self):
         """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
@@ -2320,7 +2310,7 @@ class CatalogoMainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "Attenzione", "Seleziona una tipologia e inserisci un nuovo nome.")
 
-    def check_for_updates(self, silent=False):
+    def check_for_updates(self):
         """Controlla la disponibilità di nuovi aggiornamenti verificando un file JSON remoto."""
         try:
             if not requests:
@@ -2371,21 +2361,17 @@ class CatalogoMainWindow(QMainWindow):
                 else:
                     QMessageBox.warning(self, "Errore Aggiornamento", "URL di download non trovato nel file di configurazione degli aggiornamenti.")
             else:
-                if not silent:
-                    QMessageBox.information(self, "Aggiornato", 
-                        f"Hai già l'ultima versione ({APP_VERSION}).")
+                QMessageBox.information(self, "Aggiornato", 
+                    f"Hai già l'ultima versione ({APP_VERSION}).")
                         
         except requests.exceptions.RequestException as re:
-            if not silent:
-                QMessageBox.warning(self, "Errore Aggiornamento", 
-                    f"Impossibile connettersi al server di aggiornamento.\nControlla la tua connessione internet.\n\nDettaglio: {re}")
+            QMessageBox.warning(self, "Errore Aggiornamento", 
+                f"Impossibile connettersi al server di aggiornamento.\nControlla la tua connessione internet.\n\nDettaglio: {re}")
         except json.JSONDecodeError:
-            if not silent:
-                QMessageBox.warning(self, "Errore Aggiornamento", "Impossibile leggere il file di configurazione degli aggiornamenti (JSON non valido).")
+            QMessageBox.warning(self, "Errore Aggiornamento", "Impossibile leggere il file di configurazione degli aggiornamenti (JSON non valido).")
         except Exception as e:
-            if not silent:
-                QMessageBox.critical(self, "Errore Aggiornamento", 
-                    f"Si è verificato un errore inatteso durante il controllo aggiornamenti.\n\nDettaglio: {e}")
+            QMessageBox.critical(self, "Errore Aggiornamento", 
+                f"Si è verificato un errore inatteso durante il controllo aggiornamenti.\n\nDettaglio: {e}")
 
 
     def start_auto_update(self, url):

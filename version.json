@@ -1,5 +1,5 @@
 {
-    "version": "1.1.6",
-    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.6/CatalogoManager_Setup.exe",
-    "notes": "- Inserisci qui le note per la nuova versione.\n- <b>Nuove Funzionalit\u00e0:</b>\n  - Aggiunta la possibilit\u00e0 di personalizzare le note di rilascio dinamicamente.\n  - Migliorato il sistema di confronto delle versioni per gestire suffissi alfanumerici (es. 1.1.5c).\n- <b>Correzioni Bug:</b>\n  - Risolto il problema per cui l'aggiornamento automatico non veniva rilevato su alcune macchine.\n  - Corretto un errore nella mappatura dei listini extra durante l'importazione.\n- Ogni riga comparir\u00e0 nel popup di aggiornamento.\n- Lo script caricher\u00e0 questo testo automaticamente."
+    "version": "1.1.6b",
+    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.6b/CatalogoManager_Setup.exe",
+    "notes": "Versione: 1.1.6b\nCorrezioni e patch:\nModificto la struttura di salvataggio dei db excel e dc Access per l'import dei prodotti\nModificato il pulsante Opzione Listini Extra in modo da avere sempre il file aggiornato"
 }

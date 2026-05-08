@@ -1,9 +1,4 @@
-- Inserisci qui le note per la nuova versione.
-- <b>Nuove Funzionalità:</b>
-  - Aggiunta la possibilità di personalizzare le note di rilascio dinamicamente.
-  - Migliorato il sistema di confronto delle versioni per gestire suffissi alfanumerici (es. 1.1.5c).
-- <b>Correzioni Bug:</b>
-  - Risolto il problema per cui l'aggiornamento automatico non veniva rilevato su alcune macchine.
-  - Corretto un errore nella mappatura dei listini extra durante l'importazione.
-- Ogni riga comparirà nel popup di aggiornamento.
-- Lo script caricherà questo testo automaticamente.
+Versione: 1.1.6b
+Correzioni e patch:
+Modificto la struttura di salvataggio dei db excel e dc Access per l'import dei prodotti
+Modificato il pulsante Opzione Listini Extra in modo da avere sempre il file aggiornato

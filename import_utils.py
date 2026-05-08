@@ -33,19 +33,21 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             categoria = row.get('categoria', 'Generale')
             tipologia_prodotto = row.get('tipologia_prodotto', 'Generico')
             
+            # Funzione di utilità interna per pulizia prezzi
+            def clean_price(val):
+                if pd.isna(val) or val == '': return 0.0
+                try:
+                    return float(str(val).replace(',', '.'))
+                except:
+                    return 0.0
+
             # Gestione Codice/SKU (i dati dalla tabella sono stringhe)
             codice = str(row.get('codice', '') or row.get('sku', '')).strip()
             if codice.lower() == 'nan': codice = ''
 
-            # Gestione Prezzi sicura (i dati dalla tabella sono stringhe, potrebbero avere la virgola)
-            try:
-                prezzo = float(str(row.get('prezzo', 0)).replace(',', '.'))
-            except (ValueError, TypeError):
-                prezzo = 0.0
-            try:
-                prezzo_secondario = float(str(row.get('prezzo_secondario', 0)).replace(',', '.'))
-            except (ValueError, TypeError):
-                prezzo_secondario = 0.0
+            # Conversione sicura dei prezzi
+            prezzo = clean_price(row.get('prezzo', 0))
+            prezzo_secondario = clean_price(row.get('prezzo_secondario', 0))
 
             visibile = 1
             immagine = str(row.get('immagine', ''))

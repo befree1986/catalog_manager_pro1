@@ -122,6 +122,12 @@ def git_commit_and_push(version):
         print(f"Invio dati a GitHub (push)...")
         subprocess.run(['git', 'push', 'origin', GITHUB_BRANCH], check=True)
         print("Push completato con successo.")
+        
+        # Creazione e push del tag git (essenziale per le release)
+        tag_name = f"v{version}"
+        print(f"Creazione tag {tag_name}...")
+        subprocess.run(['git', 'tag', '-a', tag_name, '-m', f"Release {tag_name}"], check=False)
+        subprocess.run(['git', 'push', 'origin', tag_name], check=True)
 
     except Exception as e:
         print(f"Si è verificato un errore inatteso durante le operazioni Git: {e}")
@@ -198,13 +204,13 @@ if __name__ == "__main__":
         # Sincronizza la versione nel file .iss e compila l'installer
         sync_iss_version(new_version)
         run_inno_setup()
-        
-        git_commit_and_push(new_version)
-        
-        # 2. Crea la GitHub Release e carica l'installer
-        # Assicurati che l'installer sia già stato generato da Inno Setup e si trovi in INSTALLER_PATH
+
+        # 2. Carichiamo l'installer su GitHub Release PRIMA di aggiornare la versione online
         create_github_release(new_version, INSTALLER_PATH)
         
+        # 3. Solo ora aggiorniamo il codice e il file version.json sul repository
+        git_commit_and_push(new_version)
+
         print("\nScript di automazione completato con successo.")
         print(f"La GitHub Release v{new_version} è stata creata e l'installer è stato caricato.")
         print("Il file version.json è stato aggiornato e pushato.")
