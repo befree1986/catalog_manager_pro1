@@ -1,4 +1,4 @@
-Versione: 1.1.6b
+Versione: 1.1.6c
 Correzioni e patch:
 Modificto la struttura di salvataggio dei db excel e dc Access per l'import dei prodotti
 Modificato il pulsante Opzione Listini Extra in modo da avere sempre il file aggiornato
