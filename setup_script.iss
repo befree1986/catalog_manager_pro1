@@ -2,7 +2,7 @@
 ; Scarica Inno Setup da: https://jrsoftware.org/isdl.php
 
 #define MyAppName "Catalogo Manager Pro"
-#define MyAppVersion "1.1.7"
+#define MyAppVersion "1.1.8"
 #define MyAppPublisher "BeFree"
 #define MyAppURL "https://github.com/befree1986/catalog_manager_pro1"
 #define MyAppExeName "CatalogoApp.exe"
@@ -17,8 +17,8 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-; Installa nella cartella locale dell'utente per evitare problemi di permessi di scrittura (per i file json/db)
-DefaultDirName={autopf}\{#MyAppName}
+; Installa in Local AppData per garantire permessi di scrittura completi sul DB senza privilegi admin
+DefaultDirName={localappdata}\{#MyAppName}
 DisableProgramGroupPage=yes
 ; Assicura che venga mostrata la pagina per scegliere la cartella di installazione
 DisableDirPage=no
@@ -40,7 +40,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 ; Assicurati di aver compilato prima il progetto con: pyinstaller CatalogoApp.spec
-Source: "dist\CatalogoApp.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\CatalogoApp\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Includi il redistributable scaricato. Viene copiato nella cartella temporanea e rimosso dopo l'installazione.
 Source: "VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; Nota: I file .db e .json verranno creati automaticamente dall'app al primo avvio

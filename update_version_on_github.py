@@ -56,7 +56,7 @@ def run_pyinstaller():
             "-m", "PyInstaller", 
             "--noconsole", 
             "--noconfirm", 
-            "--onefile", 
+            "--onedir", 
             "--name", "CatalogoApp", 
             "main.py"
         ], check=True)

@@ -1,5 +1,5 @@
 {
-    "version": "1.1.7",
-    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.7/CatalogoManager_Setup.exe",
+    "version": "1.1.8",
+    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.1.8/CatalogoManager_Setup.exe",
     "notes": "Versione: 1.1.7\nCorrezioni e patch:\n- Risolto il problema del salvataggio prodotti da Excel/Access (gestione valori vuoti).\n- Ripristinato il funzionamento del tasto 'Listini Extra' nel form di importazione."
 }
