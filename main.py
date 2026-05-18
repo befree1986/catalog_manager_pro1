@@ -5,12 +5,14 @@ import re
 import datetime
 import json
 import logging
-import pandas as pd
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar, QTextEdit
+try:
+    import pandas as pd # Requires 'pip install pandas openpyxl'
+except ImportError:
+    pd = None
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar, QTextEdit, QSpinBox, QGroupBox)
 import webbrowser
 from PyQt5.QtGui import QPixmap, QFont, QColor, QIcon, QTextDocument
 from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QTimer
-from PyQt5.QtWidgets import QSpinBox, QGroupBox
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 import subprocess
 import tempfile
@@ -26,8 +28,8 @@ except ImportError:
 from prodotto_dialog import ProdottoDialog
 from prodotti_manager import lista_prodotti, aggiungi_prodotto, modifica_prodotto, cancella_prodotto, get_existing_skus, pulisci_database, svuota_tutto, get_tipologie_prodotto, rinomina_tipologia, cancella_tipologia, aggiorna_tipologia_per_ids, get_listini, crea_listino, cancella_listino, get_prezzi_listino, aggiorna_prezzo_listino, salva_catalogo_db, get_cataloghi_db, rinomina_catalogo_db, get_counts_per_tipologia, cancella_catalogo_db
 from email_utils import invia_email
-from import_utils import get_access_tables, read_access_table, read_excel_df, importa_dataframe_nel_db
-from pdf_export import esporta_catalogo_pdf
+from import_utils import get_access_tables, read_access_table, read_excel_df, importa_dataframe_nel_db, pyodbc
+from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
 APP_VERSION = "1.1.9" # Nuova versione
@@ -2697,11 +2699,20 @@ class CatalogoMainWindow(QMainWindow):
                 self.refresh_tipologie_combos()
 
     def importa_excel(self):
+        if pd is None:
+            QMessageBox.critical(self, "Errore Libreria", 
+                                 "La libreria 'pandas' non è installata. Esegui: pip install pandas openpyxl")
+            return
         file_path, _ = QFileDialog.getOpenFileName(self, 'Seleziona file Excel', '', 'Excel (*.xlsx *.xls)')
         if file_path:
             self._process_import(file_path, read_excel_df)
 
     def importa_access(self):
+        if pyodbc is None:
+            QMessageBox.critical(self, "Errore Libreria", 
+                                 "La libreria 'pyodbc' non è installata.\n"
+                                 "Esegui: pip install pyodbc")
+            return
         file_path, _ = QFileDialog.getOpenFileName(self, 'Seleziona file Access', '', 'Access Database (*.mdb *.accdb)')
         if file_path:
             try:
@@ -2805,6 +2816,11 @@ class CatalogoMainWindow(QMainWindow):
                 QMessageBox.critical(self, 'Errore Importazione', f"Errore durante la lettura del file o l'importazione:\n{str(e)}")
 
     def esporta_pdf(self):
+        if FPDF is object:
+            QMessageBox.critical(self, "Errore Libreria", 
+                                 "La libreria 'fpdf' non è installata.\n"
+                                 "Esegui: pip install fpdf")
+            return
         self.update_catalog_settings_from_ui() # Salva le impostazioni correnti
         # Aggiungi l'ordine personalizzato delle categorie alla configurazione
         self.catalog_settings['catalog_structure'] = self.load_catalog_structure()

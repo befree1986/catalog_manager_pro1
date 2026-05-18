@@ -1,10 +1,18 @@
 import sqlite3
-import pandas as pd
-import pyodbc
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
 import os
 
 def read_excel_df(file_path):
     """Legge un file Excel, normalizza le colonne e restituisce un DataFrame."""
+    if pd is None:
+        raise ImportError("Pandas non è installato.")
     df = pd.read_excel(file_path)
     df.columns = df.columns.str.lower()
     return df
@@ -100,6 +108,8 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
 
 def get_access_tables(file_path):
     """Restituisce una lista delle tabelle presenti nel file Access."""
+    if pyodbc is None:
+        raise ImportError("La libreria 'pyodbc' non è installata. Impossibile connettersi ad Access.")
     conn_str = r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=' + file_path
     try:
         conn = pyodbc.connect(conn_str)
@@ -112,6 +122,8 @@ def get_access_tables(file_path):
 
 def read_access_table(file_path, table_name):
     """Legge una specifica tabella da un file Access e restituisce un DataFrame."""
+    if pyodbc is None:
+        raise ImportError("La libreria 'pyodbc' non è installata.")
     conn_str = r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=' + file_path
     conn = pyodbc.connect(conn_str)
     try:

@@ -1,0 +1,8 @@
+PyQt5
+pandas
+openpyxl
+requests
+plyer
+pyodbc
+fpdf
+pyinstaller

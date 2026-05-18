@@ -1,10 +1,15 @@
-from fpdf import FPDF
+try:
+    from fpdf import FPDF
+except ImportError:
+    FPDF = object
 import sqlite3
 import os
 from db import DB_PATH
 
-class CatalogoPDF(FPDF):
+class CatalogoPDF(FPDF if FPDF is not object else object):
     def __init__(self, config=None):
+        if FPDF is object:
+            raise ImportError("La libreria 'fpdf' non è installata.")
         super().__init__()
         self.config = config or {}
         self.primary_color = self._hex_to_rgb(self.config.get('color', '#2c3e50'))
@@ -405,6 +410,9 @@ def esporta_catalogo_pdf(filename='catalogo.pdf', config=None):
     else:
         page_map_final = None
     
+    if FPDF is object:
+        print("Errore: Libreria 'fpdf' non trovata.")
+        return
     # PASSAGGIO 2: Generazione Reale
     pdf = CatalogoPDF(config=config)
     generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=page_map_final)

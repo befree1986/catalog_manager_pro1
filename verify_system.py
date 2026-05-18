@@ -1,10 +1,23 @@
 import os
 import json
 from main import APP_VERSION, parse_version
+import importlib
 
 def check_integrity():
     print("=== DIAGNOSTICA PRE-LANCIO ===")
     
+    # 0. Verifica Moduli Python
+    dependencies = ['PyQt5', 'pandas', 'openpyxl', 'requests', 'plyer', 'pyodbc', 'fpdf']
+    print("Verifica Dipendenze:")
+    for lib in dependencies:
+        try:
+            importlib.import_module(lib)
+            status = "✅ Installato"
+        except ImportError:
+            status = "❌ MANCANTE"
+        print(f"{lib:15}: {status}")
+    print("-" * 30)
+
     # 1. Verifica file necessari
     required_files = ['main.py', 'catalogo.db', 'version.json', 'email_utils.py']
     for f in required_files:
