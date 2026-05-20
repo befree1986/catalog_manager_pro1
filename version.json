@@ -1,5 +1,5 @@
 {
-    "version": "1.2.3",
-    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.2.3/CatalogoManager_Setup.exe",
-    "notes": "Versione: 1.2.3\nCorrezioni e patch:\n- Risolto definitivamente il bug del pulsante '+ Aggiungi Mappatura Listino' che non rispondeva al click.\n- Riprogettata la gestione dei listini extra dinamici con inserimento nativo nel layout per scorrimento e ridisegno fluidi."
+    "version": "1.2.4",
+    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.2.4/CatalogoManager_Setup.exe",
+    "notes": "Versione: 1.2.4\nFunzionalit\u00e0 e Correzioni:\n- Supporto immagini migliorato: risoluzione automatica delle estensioni e correzione dell'eventuale suffisso `.0` nei codici importati da Excel per il caricamento delle immagini da cartella.\n- Selezione visualizzazione prezzi: nuovo filtro nella griglia prodotti per selezionare quale listino visualizzare (\"Tutti i prezzi\", \"Prezzo Base\", \"Listino 2\", \"Listino 3\", \"Listino 4\", o qualsiasi listino personalizzato dinamico).\n- Ridenominazione colonne in anteprima: possibilit\u00e0 di fare doppio clic sulle intestazioni delle colonne della tabella di anteprima per rinominarle al volo (es. importare colonne aggiuntive rinominandole in campi personalizzati come \"IVA\" o \"Accise\").\n- Importazione automatica campi extra: ogni colonna non standard importata viene registrata automaticamente come listino/campo dinamico."
 }

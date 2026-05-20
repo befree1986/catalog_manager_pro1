@@ -1,4 +1,6 @@
-Versione: 1.2.3
-Correzioni e patch:
-- Risolto definitivamente il bug del pulsante '+ Aggiungi Mappatura Listino' che non rispondeva al click.
-- Riprogettata la gestione dei listini extra dinamici con inserimento nativo nel layout per scorrimento e ridisegno fluidi.
+Versione: 1.2.4
+Funzionalità e Correzioni:
+- Supporto immagini migliorato: risoluzione automatica delle estensioni e correzione dell'eventuale suffisso `.0` nei codici importati da Excel per il caricamento delle immagini da cartella.
+- Selezione visualizzazione prezzi: nuovo filtro nella griglia prodotti per selezionare quale listino visualizzare ("Tutti i prezzi", "Prezzo Base", "Listino 2", "Listino 3", "Listino 4", o qualsiasi listino personalizzato dinamico).
+- Ridenominazione colonne in anteprima: possibilità di fare doppio clic sulle intestazioni delle colonne della tabella di anteprima per rinominarle al volo (es. importare colonne aggiuntive rinominandole in campi personalizzati come "IVA" o "Accise").
+- Importazione automatica campi extra: ogni colonna non standard importata viene registrata automaticamente come listino/campo dinamico.

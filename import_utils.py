@@ -27,6 +27,18 @@ def read_danea_xml(file_path):
         return pd.DataFrame()
     except Exception as e:
         raise Exception(f"Errore durante la lettura dell'XML Danea: {e}")
+def normalize_key(val):
+    if not val:
+        return ""
+    val_str = str(val).strip()
+    # Rimuovi il suffisso .0 se è una rappresentazione float di un intero
+    if val_str.endswith('.0'):
+        val_str = val_str[:-2]
+    # Rimuovi estensione se presente (es. .jpg, .png)
+    name, ext = os.path.splitext(val_str)
+    if ext.lower() in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
+        val_str = name
+    return val_str.lower().strip()
 
 def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, price_list_map=None):
     """Importa un DataFrame nel database, gestendo la logica di conversione e ricerca immagini."""
@@ -40,7 +52,8 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             for f in os.listdir(images_folder):
                 name, ext = os.path.splitext(f)
                 if ext.lower() in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
-                    image_map[name.lower()] = os.path.join(images_folder, f)
+                    # Chiave normalizzata: es. "1001"
+                    image_map[name.lower().strip()] = os.path.join(images_folder, f)
         except OSError: pass
 
     try:
@@ -63,6 +76,11 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             # Gestione Codice/SKU (i dati dalla tabella sono stringhe)
             codice = str(row.get('codice', '') or row.get('sku', '')).strip()
             if codice.lower() == 'nan': codice = ''
+            
+            # Normalizziamo il codice per rimuovere eventuali .0 da Excel
+            codice_normalizzato = codice
+            if codice_normalizzato.endswith('.0'):
+                codice_normalizzato = codice_normalizzato[:-2]
 
             # Conversione sicura dei prezzi
             prezzo = clean_price(row.get('prezzo', 0))
@@ -75,15 +93,27 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             qta_min_4 = int(float(str(row.get('qta_min_4', 0) or 0).replace(',', '.')))
 
             visibile = 1
-            immagine = str(row.get('immagine', ''))
+            immagine = str(row.get('immagine', '')).strip()
             if immagine.lower() == 'nan': immagine = ''
 
-            # LOGICA IMMAGINI DA CARTELLA: Se abbiamo SKU e Cartella, cerchiamo il file
-            # Migliorata: ricerca case-insensitive tramite mappa
-            if images_folder and codice:
-                codice_lower = codice.lower().strip()
-                if codice_lower in image_map:
-                    immagine = image_map[codice_lower]
+            # LOGICA IMMAGINI DA CARTELLA:
+            # 1. Se l'utente ha selezionato una cartella immagini, proviamo a risolverla tramite il valore mappato in 'immagine'
+            # 2. Se non lo trova o non è mappata, proviamo tramite il 'codice'
+            if images_folder:
+                resolved = False
+                
+                # Prova prima con il valore presente nel campo immagine (es. nome file o codice scritto nella colonna)
+                if immagine:
+                    img_key = normalize_key(immagine)
+                    if img_key in image_map:
+                        immagine = image_map[img_key]
+                        resolved = True
+                
+                # Se non risolto, prova con il codice a barre / SKU
+                if not resolved and codice_normalizzato:
+                    code_key = normalize_key(codice_normalizzato)
+                    if code_key in image_map:
+                        immagine = image_map[code_key]
 
             c.execute('''INSERT INTO prodotti (nome, categoria, descrizione, prezzo, visibile, immagine, 
                          prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, 
@@ -93,9 +123,32 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             # Ottieni ID del prodotto appena inserito
             new_prod_id = c.lastrowid
 
-            # --- GESTIONE LISTINI EXTRA ---
-            if price_list_map and new_prod_id:
+            # --- GESTIONE LISTINI EXTRA / CAMPI EXTRA ---
+            # Definiamo i campi standard da ignorare per i listini extra
+            standard_fields = {
+                'id', 'nome', 'categoria', 'descrizione', 'prezzo', 'visibile', 
+                'immagine', 'prezzo_secondario', 'codice', 'tipologia_prodotto', 
+                'prezzo3', 'prezzo4', 'qta_min_2', 'qta_min_3', 'qta_min_4', 'quantita'
+            }
+            
+            # Uniamo i listini definiti nella mappa e qualsiasi colonna extra presente nel DataFrame
+            all_extra_columns = {} # {nome_colonna_nel_df: nome_listino}
+            
+            # Se abbiamo un mapping esplicito dei listini, usiamo quello
+            if price_list_map:
                 for col_name, listino_nome in price_list_map.items():
+                    if col_name in row.index:
+                        all_extra_columns[col_name] = listino_nome
+            
+            # Aggiungiamo qualsiasi altra colonna nel DataFrame che non sia un campo standard
+            for col_name in row.index:
+                col_lower = col_name.lower().strip()
+                if col_lower not in standard_fields and col_name not in all_extra_columns:
+                    # Il nome della colonna stessa diventa il nome del listino (es. "IVA", "Accise")
+                    all_extra_columns[col_name] = col_name
+
+            if new_prod_id:
+                for col_name, listino_nome in all_extra_columns.items():
                     valore = row.get(col_name, 0)
                     try:
                         prezzo_listino = float(str(valore).replace(',', '.'))

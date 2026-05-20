@@ -26,13 +26,13 @@ except ImportError:
     requests = None
 
 from prodotto_dialog import ProdottoDialog
-from prodotti_manager import lista_prodotti, aggiungi_prodotto, modifica_prodotto, cancella_prodotto, get_existing_skus, pulisci_database, svuota_tutto, get_tipologie_prodotto, rinomina_tipologia, cancella_tipologia, aggiorna_tipologia_per_ids, get_listini, crea_listino, cancella_listino, get_prezzi_listino, aggiorna_prezzo_listino, salva_catalogo_db, get_cataloghi_db, rinomina_catalogo_db, get_counts_per_tipologia, cancella_catalogo_db
+from prodotti_manager import lista_prodotti, aggiungi_prodotto, modifica_prodotto, cancella_prodotto, get_existing_skus, pulisci_database, svuota_tutto, get_tipologie_prodotto, rinomina_tipologia, cancella_tipologia, aggiorna_tipologia_per_ids, get_listini, crea_listino, cancella_listino, get_prezzi_listino, aggiorna_prezzo_listino, salva_catalogo_db, get_cataloghi_db, rinomina_catalogo_db, get_counts_per_tipologia, cancella_catalogo_db, get_prezzi_prodotto
 from email_utils import invia_email
 from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.2.3" # Integrazione Danea EasyFatt
+APP_VERSION = "1.2.4" # Supporto Immagini e Gestione Prezzi Avanzata
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -114,15 +114,67 @@ class ProductCard(QWidget):
         info_text = f"<h4 style='margin:0; color:#2c3e50;'>{p[1]}</h4>{codice_html}<p style='color:gray; font-size:11px; margin-top:2px; margin-bottom:2px;'>{p[2]}</p>{tipologia_html}"
         layout.addWidget(QLabel(info_text))
         
-        price_text = f"<b style='font-size:16px; color:#27ae60;'>€ {(p[4] or 0.0):.2f}</b>"
-        if len(p) > 7 and p[7]:
+        # --- Generazione Testo Prezzi in Base al Filtro ---
+        active_text = "👀 Tutti i Prezzi"
+        if hasattr(self.parent_window, 'price_filter_combo'):
+            active_text = self.parent_window.price_filter_combo.currentText()
+            
+        price_text = ""
+        if active_text == "👀 Tutti i Prezzi":
+            price_text = f"<b style='font-size:14px; color:#27ae60;'>Base: € {(p[4] or 0.0):.2f}</b>"
+            # Listino 2
+            if len(p) > 7 and p[7]:
+                try:
+                    prezzo2 = float(p[7])
+                    if prezzo2 > 0:
+                        price_text += f"<br><span style='color:#e67e22; font-size:11px;'>Listino 2: € {prezzo2:.2f}</span>"
+                except: pass
+            # Listino 3
+            if len(p) > 10 and p[10]:
+                try:
+                    prezzo3 = float(p[10])
+                    if prezzo3 > 0:
+                        price_text += f"<br><span style='color:#e67e22; font-size:11px;'>Listino 3: € {prezzo3:.2f}</span>"
+                except: pass
+            # Listino 4
+            if len(p) > 11 and p[11]:
+                try:
+                    prezzo4 = float(p[11])
+                    if prezzo4 > 0:
+                        price_text += f"<br><span style='color:#e67e22; font-size:11px;'>Listino 4: € {prezzo4:.2f}</span>"
+                except: pass
+            # Listini custom/dinamici da DB
             try:
-                prezzo2 = float(p[7])
-                if prezzo2 > 0:
-                    price_text += f"<br><span style='color:#e67e22; font-size:10px;'>Listino 2: € {prezzo2:.2f}</span>"
-            except (ValueError, TypeError):
-                # Se p[7] non è un numero valido (es. 'CAT_PROVA'), ignora l'errore e non mostrare il prezzo2
-                pass
+                custom_prices = get_prezzi_prodotto(p[0])
+                for listino_nome, custom_p in custom_prices.items():
+                    if custom_p > 0:
+                        price_text += f"<br><span style='color:#9b59b6; font-size:11px;'>{listino_nome}: € {custom_p:.2f}</span>"
+            except Exception as e:
+                print(f"Errore nel recupero dei prezzi extra per prodotto {p[0]}: {e}")
+                
+        elif active_text == "💰 Prezzo Base":
+            price_text = f"<b style='font-size:16px; color:#27ae60;'>€ {(p[4] or 0.0):.2f}</b>"
+            
+        elif active_text == "💰 Listino 2":
+            prezzo2 = float(p[7]) if len(p) > 7 and p[7] else 0.0
+            price_text = f"<b style='font-size:16px; color:#e67e22;'>Listino 2: € {prezzo2:.2f}</b>"
+            
+        elif active_text == "💰 Listino 3":
+            prezzo3 = float(p[10]) if len(p) > 10 and p[10] else 0.0
+            price_text = f"<b style='font-size:16px; color:#e67e22;'>Listino 3: € {prezzo3:.2f}</b>"
+            
+        elif active_text == "💰 Listino 4":
+            prezzo4 = float(p[11]) if len(p) > 11 and p[11] else 0.0
+            price_text = f"<b style='font-size:16px; color:#e67e22;'>Listino 4: € {prezzo4:.2f}</b>"
+            
+        elif active_text.startswith("📊 Listino:"):
+            listino_nome = active_text.replace("📊 Listino: ", "")
+            try:
+                custom_prices = get_prezzi_prodotto(p[0])
+                prezzo_cust = custom_prices.get(listino_nome, 0.0)
+                price_text = f"<b style='font-size:16px; color:#9b59b6;'>{listino_nome}: € {prezzo_cust:.2f}</b>"
+            except Exception as e:
+                price_text = f"<b style='font-size:16px; color:#9b59b6;'>{listino_nome}: N/D</b>"
 
         layout.addWidget(QLabel(price_text))
         layout.addStretch()
@@ -593,17 +645,26 @@ class PreviewDialog(QDialog):
         super().__init__(parent)
         self.existing_skus = get_existing_skus() # Carica SKU dal DB per validazione
         self.setWindowTitle("Anteprima Importazione Dati")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(850, 600)
         
         layout = QVBoxLayout(self)
         
-        info_label = QLabel(f"Trovate {len(df)} righe da importare. Controlla e modifica i dati.\nRosso: Prezzo non valido | Arancione: SKU duplicato (nel DB o nel file)")
-        info_label.setStyleSheet("font-style: italic; margin-bottom: 10px;")
+        info_label = QLabel(
+            f"Trovate {len(df)} righe da importare. Controlla e modifica i dati.\n"
+            "🔴 Rosso: Prezzo non valido | 🟠 Arancione: SKU duplicato nel DB | 🟡 Giallo: SKU duplicato nel file\n"
+            "💡 Suggerimento: Fai doppio clic sull'intestazione di una colonna per rinominarla (es. Aliquota -> IVA)."
+        )
+        info_label.setStyleSheet("font-style: italic; color: #2c3e50; line-height: 1.4; margin-bottom: 10px;")
         layout.addWidget(info_label)
         
         self.table = QTableWidget()
         self.populate_table(df)
         self.table.itemChanged.connect(self.validate_item) # Connetti segnale per validazione dinamica
+        
+        # Abilita doppio clic su intestazione colonna per rinominarla
+        self.table.horizontalHeader().setSectionsClickable(True)
+        self.table.horizontalHeader().sectionDoubleClicked.connect(self.rename_column)
+        
         layout.addWidget(self.table)
         
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -613,6 +674,13 @@ class PreviewDialog(QDialog):
         layout.addWidget(button_box)
 
         # Rendi la tabella esplicitamente modificabile dall'utente
+        self.table.setEditTriggers(QTableWidget.AllEditTriggers)
+
+    def rename_column(self, index):
+        old_name = self.table.horizontalHeaderItem(index).text()
+        new_name, ok = QInputDialog.getText(self, "Rinomina Colonna", f"Rinomina la colonna '{old_name}' in:", QLineEdit.Normal, old_name)
+        if ok and new_name.strip():
+            self.table.horizontalHeaderItem(index).setText(new_name.strip())
         self.table.setEditTriggers(QTableWidget.AllEditTriggers)
 
     def _validate_cell(self, item):
@@ -1476,6 +1544,19 @@ class CatalogoMainWindow(QMainWindow):
         self.search_input.setStyleSheet("padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size:14px;")
         self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
         header.addWidget(self.search_input)
+
+        # Filtro Visualizzazione Prezzi / Listino
+        self.price_filter_combo = QComboBox()
+        self.price_filter_combo.setStyleSheet("padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size:14px; min-width: 180px;")
+        self.price_filter_combo.addItems([
+            "👀 Tutti i Prezzi", 
+            "💰 Prezzo Base", 
+            "💰 Listino 2", 
+            "💰 Listino 3", 
+            "💰 Listino 4"
+        ])
+        self.price_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
+        header.addWidget(self.price_filter_combo)
         
         # Bottone Modifica Massiva
         btn_mass_edit = QPushButton("🏷️ Assegna a Filtrati")
@@ -1533,9 +1614,38 @@ class CatalogoMainWindow(QMainWindow):
                 col = 0
                 row += 1
 
+    def refresh_price_filter_combo(self):
+        # Impediamo ricorsioni durante l'aggiornamento della combo
+        self.price_filter_combo.blockSignals(True)
+        current_text = self.price_filter_combo.currentText()
+        self.price_filter_combo.clear()
+        
+        # Opzioni fisse
+        self.price_filter_combo.addItems([
+            "👀 Tutti i Prezzi", 
+            "💰 Prezzo Base", 
+            "💰 Listino 2", 
+            "💰 Listino 3", 
+            "💰 Listino 4"
+        ])
+        
+        # Carica listini dinamici dal DB
+        listini_db = get_listini()
+        for list_id, name, desc in listini_db:
+            self.price_filter_combo.addItem(f"📊 Listino: {name}", list_id)
+            
+        # Tenta di ripristinare la selezione precedente
+        idx = self.price_filter_combo.findText(current_text)
+        if idx >= 0:
+            self.price_filter_combo.setCurrentIndex(idx)
+        else:
+            self.price_filter_combo.setCurrentIndex(0)
+        self.price_filter_combo.blockSignals(False)
+
     def mostra_prodotti_per_tipologia(self, nome_tipologia):
         self.current_product_group_filter = nome_tipologia
         self.prodotti_page_title.setText(f"Prodotti in: {nome_tipologia}")
+        self.refresh_price_filter_combo()
         self.aggiorna_griglia_prodotti()
         self.prodotti_stack.setCurrentIndex(1)
 

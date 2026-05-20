@@ -203,3 +203,18 @@ def rinomina_catalogo_db(id, nuovo_nome):
     c.execute('UPDATE cataloghi_salvati SET nome=? WHERE id=?', (nuovo_nome, id))
     conn.commit()
     conn.close()
+
+def get_prezzi_prodotto(prodotto_id):
+    """Restituisce un dizionario {listino_nome: prezzo} per i listini extra di un prodotto."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        SELECT l.nome, pl.prezzo 
+        FROM prezzi_listini pl
+        JOIN listini l ON pl.listino_id = l.id
+        WHERE pl.prodotto_id = ?
+    ''', (str(prodotto_id),))
+    res = dict(c.fetchall())
+    conn.close()
+    return res
+
