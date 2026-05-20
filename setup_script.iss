@@ -2,7 +2,7 @@
 ; Scarica Inno Setup da: https://jrsoftware.org/isdl.php
 
 #define MyAppName "Catalogo Manager Pro"
-#define MyAppVersion "1.2.5"
+#define MyAppVersion "1.2.6"
 #define MyAppPublisher "BeFree"
 #define MyAppURL "https://github.com/befree1986/catalog_manager_pro1"
 #define MyAppExeName "CatalogoApp.exe"
@@ -46,8 +46,8 @@ Source: "VC_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; Nota: I file .db e .json verranno creati automaticamente dall'app al primo avvio
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\icon.ico"
 
 [Run]
 ; Esegue l'installazione del VC Redist in modalità silenziosa prima di completare il setup

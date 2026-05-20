@@ -1,6 +1,7 @@
-Versione: 1.2.5
+Versione: 1.2.6
 Correzioni e Funzionalità:
-- Risolto crash in importazione: corretto un bug critico che causava la chiusura improvvisa (crash) del programma quando si provava a rimuovere o cancellare una mappatura di listino prezzi extra nel dialogo di associazione colonne.
+- Risolto crash in importazione definitivo: riprogettata l'intera sezione delle mappature dinamiche dei listini per utilizzare un contenitore `QVBoxLayout` indipendente invece di manipolare direttamente il layout `QFormLayout` principale. Questo ha rimosso l'intera causa dei crash in fase di rimozione/cancellazione delle righe tramite pulsante "❌".
+- Ripristino icona applicazione: configurata la compilazione PyInstaller per incorporare nativamente il file `icon.ico` all'interno dell'eseguibile, ripristinando l'icona personalizzata corretta sia per l'applicazione che per i relativi collegamenti sul desktop.
 - Supporto immagini migliorato (v1.2.4): risoluzione automatica delle estensioni e correzione dell'eventuale suffisso `.0` nei codici importati da Excel per il caricamento delle immagini da cartella.
 - Selezione visualizzazione prezzi (v1.2.4): nuovo filtro nella griglia prodotti per selezionare quale listino visualizzare ("Tutti i prezzi", "Prezzo Base", "Listino 2", "Listino 3", "Listino 4", o qualsiasi listino personalizzato dinamico).
 - Ridenominazione colonne in anteprima (v1.2.4): possibilità di fare doppio clic sulle intestazioni delle colonne della tabella di anteprima per rinominarle al volo (es. importare colonne aggiuntive rinominandole in campi personalizzati come "IVA" o "Accise").

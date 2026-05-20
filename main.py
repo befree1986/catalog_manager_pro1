@@ -32,7 +32,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, re
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.2.5" # Supporto Immagini e Correzione Bug Rimozione Listini
+APP_VERSION = "1.2.6" # Supporto Immagini, Ripristino Icona e Fix Riavvio Listini
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -495,6 +495,13 @@ class ColumnMappingDialog(QDialog):
         form_layout.addRow(QLabel("<hr><b>LISTINI PREZZI EXTRA (Opzionale):</b>"))
         form_layout.addRow(QLabel("Seleziona le colonne che contengono prezzi per listini specifici."))
 
+        # Contenitore per i listini extra per evitare problemi con QFormLayout
+        self.listini_container = QWidget()
+        self.listini_layout = QVBoxLayout(self.listini_container)
+        self.listini_layout.setContentsMargins(0, 0, 0, 0)
+        self.listini_layout.setSpacing(5)
+        form_layout.addRow(self.listini_container)
+
         # Sezione dinamica per listini
         self.form_layout = form_layout
         self.listino_rows = []
@@ -545,10 +552,9 @@ class ColumnMappingDialog(QDialog):
         row_widget.combo_col = combo_col
         row_widget.line_name = line_name
         
-        # Aggiungi al form layout prima della riga del pulsante "Nuovo Listino"
+        # Aggiungi al layout del contenitore
         self.listino_rows.append(row_widget)
-        insert_idx = self.form_layout.rowCount() - 1
-        self.form_layout.insertRow(insert_idx, row_widget)
+        self.listini_layout.addWidget(row_widget)
         row_widget.show()
         
         # Forza il ridisegno del dialogo
@@ -556,17 +562,21 @@ class ColumnMappingDialog(QDialog):
         self.update()
             
     def remove_listino_row(self, widget):
+        if widget:
+            # Nasconde subito visivamente il widget per un feedback immediato
+            widget.hide()
+            # Esegue la rimozione effettiva e l'aggiustamento del layout nel ciclo successivo dell'event loop
+            QTimer.singleShot(0, lambda: self._do_remove_listino_row(widget))
+
+    def _do_remove_listino_row(self, widget):
         if widget in self.listino_rows:
             self.listino_rows.remove(widget)
-        # Rimozione sicura della riga tramite indice per evitare crash in PySide/PyQt
-        row, role = self.form_layout.getWidgetPosition(widget)
-        if row >= 0:
-            self.form_layout.removeRow(row)
-        else:
-            self.form_layout.removeRow(widget)
+        self.listini_layout.removeWidget(widget)
+        widget.setParent(None)
         widget.deleteLater()
         self.adjustSize()
         self.update()
+
 
     def _find_best_match(self, field, columns):
         """Tenta di trovare la migliore corrispondenza per un campo nelle colonne date."""

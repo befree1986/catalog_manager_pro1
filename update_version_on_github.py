@@ -50,7 +50,8 @@ def run_pyinstaller():
     try:
         # Usiamo sys.executable per assicurarci di usare lo stesso interprete corrente
         # Aggiungiamo --noconfirm per sovrascrivere la build precedente senza chiedere
-        # Usiamo --onefile e --name per far coincidere l'output con quanto atteso da Inno Setup
+        # Usiamo --onedir e --name per far coincidere l'output con quanto atteso da Inno Setup
+        # Aggiungiamo --icon per impostare l'icona personalizzata corretta
         subprocess.run([
             sys.executable, 
             "-m", "PyInstaller", 
@@ -58,9 +59,20 @@ def run_pyinstaller():
             "--noconfirm", 
             "--onedir", 
             "--name", "CatalogoApp", 
+            "--icon", "icon.ico",
             "main.py"
         ], check=True)
         print("Eseguibile generato con successo nella cartella 'dist'.")
+        
+        # Copiamo anche icon.png e icon.ico nella cartella dist/CatalogoApp per assicurarci che siano disponibili a runtime
+        dist_dir = os.path.join(os.path.dirname(__file__), 'dist', 'CatalogoApp')
+        if os.path.exists(dist_dir):
+            shutil.copy('icon.png', dist_dir)
+            shutil.copy('icon.ico', dist_dir)
+            print("Icone copiate nella cartella di distribuzione dist/CatalogoApp.")
+        else:
+            print("Avviso: cartella di distribuzione non trovata, icone non copiate.")
+            
     except subprocess.CalledProcessError as e:
         print(f"Errore durante l'esecuzione di PyInstaller: {e}")
         sys.exit(1)
