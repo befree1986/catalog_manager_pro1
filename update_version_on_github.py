@@ -125,9 +125,22 @@ def git_commit_and_push(version):
         
         # Creazione e push del tag git (essenziale per le release)
         tag_name = f"v{version}"
-        print(f"Creazione tag {tag_name}...")
+        print(f"Creazione tag locale {tag_name}...")
         subprocess.run(['git', 'tag', '-a', tag_name, '-m', f"Release {tag_name}"], check=False)
-        subprocess.run(['git', 'push', 'origin', tag_name], check=True)
+
+        print(f"Invio tag {tag_name} a GitHub...")
+        push_tag_result = subprocess.run(['git', 'push', 'origin', tag_name], capture_output=True, text=True, check=False)
+
+        if push_tag_result.returncode != 0:
+            if "already exists" in push_tag_result.stderr.lower():
+                print(f"Avviso: Il tag {tag_name} esiste già sul repository remoto. Salto il push del tag.")
+            else:
+                # Rilancia l'eccezione se è un errore diverso
+                raise subprocess.CalledProcessError(
+                    push_tag_result.returncode, push_tag_result.args, output=push_tag_result.stdout, stderr=push_tag_result.stderr
+                )
+        else:
+            print(f"Tag {tag_name} pushato con successo.")
 
     except Exception as e:
         print(f"Si è verificato un errore inatteso durante le operazioni Git: {e}")
