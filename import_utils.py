@@ -8,6 +8,7 @@ try:
 except ImportError:
     pyodbc = None
 import os
+from db import DB_PATH
 
 def read_excel_df(file_path):
     """Legge un file Excel, normalizza le colonne e restituisce un DataFrame."""
@@ -29,7 +30,7 @@ def read_danea_xml(file_path):
 
 def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, price_list_map=None):
     """Importa un DataFrame nel database, gestendo la logica di conversione e ricerca immagini."""
-    conn = sqlite3.connect('catalogo.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     # Mappa immagini per ricerca case-insensitive veloce
@@ -66,6 +67,12 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             # Conversione sicura dei prezzi
             prezzo = clean_price(row.get('prezzo', 0))
             prezzo_secondario = clean_price(row.get('prezzo_secondario', 0))
+            prezzo3 = clean_price(row.get('prezzo3', 0))
+            prezzo4 = clean_price(row.get('prezzo4', 0))
+            
+            qta_min_2 = int(float(str(row.get('qta_min_2', 0) or 0).replace(',', '.')))
+            qta_min_3 = int(float(str(row.get('qta_min_3', 0) or 0).replace(',', '.')))
+            qta_min_4 = int(float(str(row.get('qta_min_4', 0) or 0).replace(',', '.')))
 
             visibile = 1
             immagine = str(row.get('immagine', ''))
@@ -78,8 +85,10 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
                 if codice_lower in image_map:
                     immagine = image_map[codice_lower]
 
-            c.execute('INSERT INTO prodotti (nome, categoria, descrizione, prezzo, visibile, immagine, prezzo_secondario, codice, tipologia_prodotto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                         (nome, categoria, descrizione, prezzo, visibile, immagine, prezzo_secondario, codice, tipologia_prodotto))
+            c.execute('''INSERT INTO prodotti (nome, categoria, descrizione, prezzo, visibile, immagine, 
+                         prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, 
+                         qta_min_2, qta_min_3, qta_min_4) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                         (nome, categoria, descrizione, prezzo, visibile, immagine, prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, qta_min_2, qta_min_3, qta_min_4))
             
             # Ottieni ID del prodotto appena inserito
             new_prod_id = c.lastrowid

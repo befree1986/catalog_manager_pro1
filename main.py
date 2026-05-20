@@ -32,7 +32,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, re
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.2.1" # Integrazione Danea EasyFatt
+APP_VERSION = "1.2.2" # Integrazione Danea EasyFatt
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -114,7 +114,7 @@ class ProductCard(QWidget):
         info_text = f"<h4 style='margin:0; color:#2c3e50;'>{p[1]}</h4>{codice_html}<p style='color:gray; font-size:11px; margin-top:2px; margin-bottom:2px;'>{p[2]}</p>{tipologia_html}"
         layout.addWidget(QLabel(info_text))
         
-        price_text = f"<b style='font-size:16px; color:#27ae60;'>€ {p[4]:.2f}</b>"
+        price_text = f"<b style='font-size:16px; color:#27ae60;'>€ {(p[4] or 0.0):.2f}</b>"
         if len(p) > 7 and p[7]:
             try:
                 prezzo2 = float(p[7])
@@ -395,7 +395,9 @@ class ColumnMappingDialog(QDialog):
         self.setMinimumWidth(500)
         self.excel_columns = excel_columns
         # Campi target che l'applicazione si aspetta
-        self.target_fields = ['nome', 'codice', 'tipologia_prodotto', 'categoria', 'descrizione', 'prezzo', 'prezzo_secondario', 'immagine']
+        self.target_fields = ['nome', 'codice', 'tipologia_prodotto', 'categoria', 'descrizione', 
+                              'prezzo', 'prezzo_secondario', 'prezzo3', 'prezzo4', 
+                              'qta_min_2', 'qta_min_3', 'qta_min_4', 'immagine']
         self.mappings = {}
         
         self.price_list_mappings = {} # {colonna_excel: nome_listino}
@@ -498,6 +500,10 @@ class ColumnMappingDialog(QDialog):
         if layout:
             layout.addWidget(row_widget)
             row_widget.show()
+            # Forza il ridisegno del contenitore e del dialogo
+            self.extra_listini_container.adjustSize()
+            self.adjustSize()
+            self.update()
             
     def remove_listino_row(self, widget):
         widget.setParent(None)
