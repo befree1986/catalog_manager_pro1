@@ -28,11 +28,11 @@ except ImportError:
 from prodotto_dialog import ProdottoDialog
 from prodotti_manager import lista_prodotti, aggiungi_prodotto, modifica_prodotto, cancella_prodotto, get_existing_skus, pulisci_database, svuota_tutto, get_tipologie_prodotto, rinomina_tipologia, cancella_tipologia, aggiorna_tipologia_per_ids, get_listini, crea_listino, cancella_listino, get_prezzi_listino, aggiorna_prezzo_listino, salva_catalogo_db, get_cataloghi_db, rinomina_catalogo_db, get_counts_per_tipologia, cancella_catalogo_db
 from email_utils import invia_email
-from import_utils import get_access_tables, read_access_table, read_excel_df, importa_dataframe_nel_db, pyodbc
+from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.1.9" # Nuova versione
+APP_VERSION = "1.2.0" # Integrazione Danea EasyFatt
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -1147,6 +1147,11 @@ class CatalogoMainWindow(QMainWindow):
         import_excel_action.setStatusTip("Importa prodotti da un file Excel (.xlsx, .xls)")
         import_excel_action.triggered.connect(self.importa_excel)
         import_menu.addAction(import_excel_action)
+
+        import_danea_action = QAction('Importa da Danea (XML)...', self)
+        import_danea_action.setStatusTip("Importa prodotti da un file XML di Danea EasyFatt")
+        import_danea_action.triggered.connect(self.importa_danea)
+        import_menu.addAction(import_danea_action)
 
         # --- Sottomenu Esporta ---
         export_menu = file_menu.addMenu('&Esporta')
@@ -2707,6 +2712,12 @@ class CatalogoMainWindow(QMainWindow):
         if file_path:
             self._process_import(file_path, read_excel_df)
 
+    def importa_danea(self):
+        """Gestisce l'importazione specifica per il formato XML di Danea."""
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Seleziona file XML Danea', '', 'Danea XML (*.xml)')
+        if file_path:
+            self._process_import(file_path, read_danea_xml)
+
     def importa_access(self):
         if pyodbc is None:
             QMessageBox.critical(self, "Errore Libreria", 
@@ -2775,8 +2786,8 @@ class CatalogoMainWindow(QMainWindow):
                             if not nome_gruppo:
                                 QMessageBox.warning(self, "Nome non valido", "Il nome del gruppo non può essere vuoto. Importazione annullata.")
                                 return
-                            # Aggiungi/Sovrascrivi la colonna tipologia_prodotto nel DataFrame
-                            edited_df['tipologia_prodotto'] = nome_gruppo
+                            # Sovrascrivi la colonna 'tipologia_prodotto' con il nome del gruppo scelto
+                            edited_df['tipologia_prodotto'] = nome_gruppo 
                         else:
                             return # L'utente ha annullato
                         
@@ -2787,9 +2798,6 @@ class CatalogoMainWindow(QMainWindow):
                                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                         if reply == QMessageBox.Yes:
                             images_folder = QFileDialog.getExistingDirectory(self, "Seleziona Cartella Immagini")
-                        
-                        # Se non selezionata, avvisa che proverà a cercare
-                        # (La logica import_utils richiede comunque un path se l'utente non lo da)
                         
                         # 6. Esegui l'importazione effettiva con barra di avanzamento
                         total_rows = len(edited_df)
