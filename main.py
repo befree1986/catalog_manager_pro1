@@ -32,7 +32,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, re
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.2.4" # Supporto Immagini e Gestione Prezzi Avanzata
+APP_VERSION = "1.2.5" # Supporto Immagini e Correzione Bug Rimozione Listini
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -558,7 +558,12 @@ class ColumnMappingDialog(QDialog):
     def remove_listino_row(self, widget):
         if widget in self.listino_rows:
             self.listino_rows.remove(widget)
-        self.form_layout.removeRow(widget)
+        # Rimozione sicura della riga tramite indice per evitare crash in PySide/PyQt
+        row, role = self.form_layout.getWidgetPosition(widget)
+        if row >= 0:
+            self.form_layout.removeRow(row)
+        else:
+            self.form_layout.removeRow(widget)
         widget.deleteLater()
         self.adjustSize()
         self.update()
