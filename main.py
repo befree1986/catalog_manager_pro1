@@ -444,16 +444,12 @@ class ColumnMappingDialog(QDialog):
         form_layout.addRow(QLabel("Seleziona le colonne che contengono prezzi per listini specifici."))
 
         # Sezione dinamica per listini
-        # Mostriamo tutte le colonne excel non ancora mappate (anche se qui le mostriamo tutte per semplicità)
-        # L'utente può mappare una colonna a un listino
-        self.extra_listini_container = QWidget()
-        self.extra_listini_layout = QVBoxLayout(self.extra_listini_container)
-        self.extra_listini_layout.setContentsMargins(0, 0, 0, 0)
+        self.form_layout = form_layout
+        self.listino_rows = []
         
         btn_add_listino = QPushButton("➕ Aggiungi Mappatura Listino")
-        btn_add_listino.clicked.connect(lambda: self.add_listino_row(None, None, self.extra_listini_layout))
+        btn_add_listino.clicked.connect(lambda checked=False: self.add_listino_row(None, None))
         
-        form_layout.addRow(self.extra_listini_container)
         form_layout.addRow("Nuovo Listino:", btn_add_listino)
         
         # Auto-detect listini
@@ -468,7 +464,7 @@ class ColumnMappingDialog(QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
 
-    def add_listino_row(self, default_col=None, default_name=None, layout=None):
+    def add_listino_row(self, default_col=None, default_name=None):
         row_widget = QWidget()
         row_layout = QHBoxLayout(row_widget)
         row_layout.setContentsMargins(0,0,0,0)
@@ -485,7 +481,7 @@ class ColumnMappingDialog(QDialog):
             
         btn_del = QPushButton("❌")
         btn_del.setFixedSize(24, 24)
-        btn_del.clicked.connect(lambda: self.remove_listino_row(row_widget))
+        btn_del.clicked.connect(lambda checked=False: self.remove_listino_row(row_widget))
         
         row_layout.addWidget(QLabel("Colonna:"))
         row_layout.addWidget(combo_col, 1)
@@ -497,16 +493,23 @@ class ColumnMappingDialog(QDialog):
         row_widget.combo_col = combo_col
         row_widget.line_name = line_name
         
-        if layout:
-            layout.addWidget(row_widget)
-            row_widget.show()
-            # Forza il ridisegno del contenitore e del dialogo
-            self.extra_listini_container.adjustSize()
-            self.adjustSize()
-            self.update()
+        # Aggiungi al form layout prima della riga del pulsante "Nuovo Listino"
+        self.listino_rows.append(row_widget)
+        insert_idx = self.form_layout.rowCount() - 1
+        self.form_layout.insertRow(insert_idx, row_widget)
+        row_widget.show()
+        
+        # Forza il ridisegno del dialogo
+        self.adjustSize()
+        self.update()
             
     def remove_listino_row(self, widget):
-        widget.setParent(None)
+        if widget in self.listino_rows:
+            self.listino_rows.remove(widget)
+        self.form_layout.removeRow(widget)
+        widget.deleteLater()
+        self.adjustSize()
+        self.update()
 
     def _find_best_match(self, field, columns):
         """Tenta di trovare la migliore corrispondenza per un campo nelle colonne date."""
@@ -531,7 +534,7 @@ class ColumnMappingDialog(QDialog):
                 if not any(col == self._find_best_match(tf, self.excel_columns) for tf in self.target_fields):
                      # Suggerisci come listino
                      suggested_name = col.title().replace("_", " ")
-                     self.add_listino_row(col, suggested_name, self.extra_listini_layout)
+                     self.add_listino_row(col, suggested_name)
 
     def get_column_mappings(self):
         """Restituisce un dizionario di mappatura: {'target_field': 'excel_column_name'}."""
@@ -545,13 +548,14 @@ class ColumnMappingDialog(QDialog):
     def get_price_list_mappings(self):
         """Restituisce {colonna_excel: nome_listino}"""
         mappings = {}
-        for i in range(self.extra_listini_layout.count()):
-            widget = self.extra_listini_layout.itemAt(i).widget()
-            if widget:
+        for widget in self.listino_rows:
+            try:
                 col = widget.combo_col.currentText()
                 name = widget.line_name.text().strip()
                 if col and name:
                     mappings[col] = name
+            except RuntimeError:
+                pass
         return mappings
 
     def save_preset(self):
