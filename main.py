@@ -444,12 +444,14 @@ class ColumnMappingDialog(QDialog):
         # Sezione dinamica per listini
         # Mostriamo tutte le colonne excel non ancora mappate (anche se qui le mostriamo tutte per semplicità)
         # L'utente può mappare una colonna a un listino
-        self.extra_listini_layout = QVBoxLayout()
+        self.extra_listini_container = QWidget()
+        self.extra_listini_layout = QVBoxLayout(self.extra_listini_container)
+        self.extra_listini_layout.setContentsMargins(0, 0, 0, 0)
         
         btn_add_listino = QPushButton("➕ Aggiungi Mappatura Listino")
         btn_add_listino.clicked.connect(lambda: self.add_listino_row(None, None, self.extra_listini_layout))
         
-        form_layout.addRow(self.extra_listini_layout)
+        form_layout.addRow(self.extra_listini_container)
         form_layout.addRow("Nuovo Listino:", btn_add_listino)
         
         # Auto-detect listini
@@ -495,6 +497,7 @@ class ColumnMappingDialog(QDialog):
         
         if layout:
             layout.addWidget(row_widget)
+            row_widget.show()
             
     def remove_listino_row(self, widget):
         widget.setParent(None)
@@ -2762,13 +2765,22 @@ class CatalogoMainWindow(QMainWindow):
                         return
 
                     # 3. Crea un nuovo DataFrame basato sulla mappatura
-                    final_df = pd.DataFrame()
-                    for target_col, source_col in mapping.items():
-                        if source_col in df_original.columns:
-                            final_df[target_col] = df_original[source_col]
+                    # Costruisci un DataFrame per la preview che include sia i campi principali mappati
+                    # sia le colonne dei listini extra con i loro nomi originali.
+                    df_for_preview = pd.DataFrame()
                     
+                    # Aggiungi le colonne mappate ai campi principali
+                    for target_col, source_col_excel in mapping.items():
+                        if source_col_excel in df_original.columns:
+                            df_for_preview[target_col] = df_original[source_col_excel]
+                    
+                    # Aggiungi le colonne dei listini extra (cruciale per importa_dataframe_nel_db)
+                    for col_name_excel in price_list_map.keys():
+                        if col_name_excel not in df_for_preview.columns and col_name_excel in df_original.columns:
+                            df_for_preview[col_name_excel] = df_original[col_name_excel]
+
                     # 4. Mostra il dialogo di anteprima con il DataFrame mappato e validabile
-                    preview_dialog = PreviewDialog(final_df, self)
+                    preview_dialog = PreviewDialog(df_for_preview, self)
                     if preview_dialog.exec_():
                         # L'utente ha confermato, ottieni i dati (potenzialmente modificati)
                         edited_df = preview_dialog.get_dataframe()
