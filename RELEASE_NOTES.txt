@@ -1,3 +1,9 @@
+Versione: 1.2.7
+Correzioni e Funzionalità:
+- Selezione listini prezzi nel PDF: Aggiunta la possibilità di selezionare individualmente quali listini visualizzare nel catalogo PDF (Prezzo Base, Listino 2, Listino 3, Listino 4 e i listini extra/custom presenti nel database come IVA o Accise).
+- Risoluzione immagini nel catalogo: Risolto definitivamente il problema delle immagini non visualizzate nel PDF (dovuto a chiamate incompatibili di classic FPDF 1.7.2 nel layout a griglia). Adesso il caricamento utilizza `QImage` e l'aspect ratio viene calcolato matematicamente per centrare al millimetro ogni immagine in entrambi i layout.
+- Correzione dell'ordinamento del catalogo: Corretto l'ordine dei prodotti generati nel PDF risolvendo un bug storico di posizionamento degli indici SQL.
+
 Versione: 1.2.6
 Correzioni e Funzionalità:
 - Risolto crash in importazione definitivo: riprogettata l'intera sezione delle mappature dinamiche dei listini per utilizzare un contenitore `QVBoxLayout` indipendente invece di manipolare direttamente il layout `QFormLayout` principale. Questo ha rimosso l'intera causa dei crash in fase di rimozione/cancellazione delle righe tramite pulsante "❌".

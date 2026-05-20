@@ -32,7 +32,7 @@ from import_utils import get_access_tables, read_access_table, read_excel_df, re
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.2.6" # Supporto Immagini, Ripristino Icona e Fix Riavvio Listini
+APP_VERSION = "1.2.7" # Selezione listini PDF e fix rendering immagini
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -1063,7 +1063,12 @@ class CatalogoMainWindow(QMainWindow):
             'include_index': True,
             'sort_mode': 'Struttura Personalizzata', # Default changed
             'style': {}, # Configurazione micro editor
-            'structure': [] # Lista ordinata di elementi (Categorie, Pagine Extra)
+            'structure': [], # Lista ordinata di elementi (Categorie, Pagine Extra)
+            'show_price_base': True,
+            'show_price2': False,
+            'show_price3': False,
+            'show_price4': False,
+            'show_custom_listini': []
         }
 
         self.init_ui()
@@ -2074,6 +2079,46 @@ class CatalogoMainWindow(QMainWindow):
         form_layout.addRow("Nome Azienda:", self.cat_company_input)
         form_layout.addRow("Colore Principale:", self.cat_color_btn)
         form_layout.addRow("", self.cat_show_prices_cb)
+        
+        # Checkboxes dei listini da mostrare nel PDF
+        self.prices_group = QGroupBox("Listini da mostrare nel PDF")
+        prices_group_layout = QVBoxLayout(self.prices_group)
+        
+        self.cb_price_base = QCheckBox("Prezzo Base")
+        self.cb_price_base.setChecked(self.catalog_settings.get('show_price_base', True))
+        prices_group_layout.addWidget(self.cb_price_base)
+        
+        self.cb_price2 = QCheckBox("Listino 2")
+        self.cb_price2.setChecked(self.catalog_settings.get('show_price2', False))
+        prices_group_layout.addWidget(self.cb_price2)
+        
+        self.cb_price3 = QCheckBox("Listino 3")
+        self.cb_price3.setChecked(self.catalog_settings.get('show_price3', False))
+        prices_group_layout.addWidget(self.cb_price3)
+        
+        self.cb_price4 = QCheckBox("Listino 4")
+        self.cb_price4.setChecked(self.catalog_settings.get('show_price4', False))
+        prices_group_layout.addWidget(self.cb_price4)
+        
+        # Listini custom/extra dinamici dal database
+        self.custom_price_checkboxes = {}
+        listini_db = get_listini() # [(id, nome, desc), ...]
+        for item in listini_db:
+            nome_listino = item[1]
+            cb = QCheckBox(f"Listino Extra: {nome_listino}")
+            cb.setChecked(nome_listino in self.catalog_settings.get('show_custom_listini', []))
+            prices_group_layout.addWidget(cb)
+            self.custom_price_checkboxes[nome_listino] = cb
+            
+        form_layout.addRow("", self.prices_group)
+        
+        # Connetti la checkbox principale "Mostra Prezzi nel Catalogo" per abilitare/disabilitare il gruppo
+        def toggle_prices_group(state):
+            self.prices_group.setEnabled(state == Qt.Checked)
+        self.cat_show_prices_cb.stateChanged.connect(toggle_prices_group)
+        # Esegui trigger iniziale
+        self.prices_group.setEnabled(self.cat_show_prices_cb.isChecked())
+
         form_layout.addRow("Layout:", self.cat_layout_combo)
         form_layout.addRow("Ordinamento:", self.cat_sort_combo)
         form_layout.addRow("", self.cat_include_index_cb)
@@ -2404,6 +2449,23 @@ class CatalogoMainWindow(QMainWindow):
         self.catalog_settings['tipologia_filter'] = self.cat_tipologia_combo.currentText()
         self.catalog_settings['include_index'] = self.cat_include_index_cb.isChecked()
         self.catalog_settings['sort_mode'] = self.cat_sort_combo.currentText()
+        
+        # Salviamo la visibilità dei listini prezzi
+        if hasattr(self, 'cb_price_base'):
+            self.catalog_settings['show_price_base'] = self.cb_price_base.isChecked()
+        if hasattr(self, 'cb_price2'):
+            self.catalog_settings['show_price2'] = self.cb_price2.isChecked()
+        if hasattr(self, 'cb_price3'):
+            self.catalog_settings['show_price3'] = self.cb_price3.isChecked()
+        if hasattr(self, 'cb_price4'):
+            self.catalog_settings['show_price4'] = self.cb_price4.isChecked()
+            
+        selected_custom = []
+        if hasattr(self, 'custom_price_checkboxes'):
+            for name, cb in self.custom_price_checkboxes.items():
+                if cb.isChecked():
+                    selected_custom.append(name)
+        self.catalog_settings['show_custom_listini'] = selected_custom
 
     def load_profiles(self):
         if os.path.exists(self.profiles_file):
@@ -2442,7 +2504,21 @@ class CatalogoMainWindow(QMainWindow):
             self.cat_tipologia_combo.setCurrentText(settings.get('tipologia_filter', 'Tutte'))
             self.cat_include_index_cb.setChecked(settings.get('include_index', True))
             self.cat_sort_combo.setCurrentText(settings.get('sort_mode', 'Categoria (Personalizzato)'))
-            # Colore e Copertina richiedono logica extra visuale se necessario, qui omettiamo per brevità
+            
+            # Carica la visibilità dei listini prezzi
+            if hasattr(self, 'cb_price_base'):
+                self.cb_price_base.setChecked(settings.get('show_price_base', True))
+            if hasattr(self, 'cb_price2'):
+                self.cb_price2.setChecked(settings.get('show_price2', False))
+            if hasattr(self, 'cb_price3'):
+                self.cb_price3.setChecked(settings.get('show_price3', False))
+            if hasattr(self, 'cb_price4'):
+                self.cb_price4.setChecked(settings.get('show_price4', False))
+                
+            if hasattr(self, 'custom_price_checkboxes'):
+                show_custom = settings.get('show_custom_listini', [])
+                for name, cb in self.custom_price_checkboxes.items():
+                    cb.setChecked(name in show_custom)
 
     def rinomina_tipologia_action(self):
         vecchia = self.gest_tipo_combo.currentText()

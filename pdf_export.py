@@ -4,7 +4,35 @@ except ImportError:
     FPDF = object
 import sqlite3
 import os
+import tempfile
+import hashlib
 from db import DB_PATH
+from prodotti_manager import get_prezzi_prodotto
+try:
+    from PyQt5.QtGui import QImage
+except ImportError:
+    QImage = None
+
+def get_safe_image_path(img_path):
+    if not img_path or not os.path.exists(img_path) or QImage is None:
+        return None
+    
+    try:
+        image = QImage(img_path)
+        if not image.isNull():
+            temp_dir = tempfile.gettempdir()
+            # Nome file temporaneo univoco basato sulla hash del percorso immagine
+            h = hashlib.md5(img_path.encode('utf-8')).hexdigest()
+            temp_file = os.path.join(temp_dir, f"pdf_img_{h}.jpg")
+            
+            # Converte in formato RGB standard per evitare problemi con canali alfa in FPDF
+            image_rgb = image.convertToFormat(QImage.Format_RGB32)
+            if image_rgb.save(temp_file, "JPEG", 90):
+                return temp_file, image.width(), image.height()
+    except Exception as e:
+        print(f"Errore nella conversione dell'immagine per PDF {img_path}: {e}")
+    return None
+
 
 class CatalogoPDF(FPDF if FPDF is not object else object):
     def __init__(self, config=None):
@@ -70,7 +98,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
     def add_index_page(self, index_data):
         pass # Placeholder, implementato esternamente o in sottoclasse se necessario
 
-    def scheda_prodotto(self, nome, categoria, descrizione, prezzo, immagine, codice, tiers):
+    def scheda_prodotto(self, nome, categoria, descrizione, prezzo, immagine, codice, tiers, p2=0.0, p3=0.0, p4=0.0, prod_id=None):
         if self.get_y() > 240:
             self.add_page()
 
@@ -82,12 +110,28 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         
         # Immagine
         img_path = immagine.strip() if immagine else ""
-        if img_path and os.path.exists(img_path):
+        safe_res = get_safe_image_path(img_path)
+        if safe_res:
+            temp_path, img_w, img_h = safe_res
             try:
                 # Mantieni aspect ratio nel box 35x35
-                self.image(img_path, x=12, y=start_y+2, w=35, h=35)
-            except:
-                pass
+                W_max = 35
+                H_max = 35
+                aspect = img_w / img_h
+                if aspect > W_max / H_max:
+                    w = W_max
+                    h = W_max / aspect
+                else:
+                    h = H_max
+                    w = H_max * aspect
+                
+                # Centra nel box 35x35
+                x_offset = 12 + (W_max - w) / 2
+                y_offset = (start_y + 2) + (H_max - h) / 2
+                
+                self.image(temp_path, x=x_offset, y=y_offset, w=w, h=h)
+            except Exception as e:
+                print(f"Errore rendering immagine scheda_prodotto: {e}")
         
         # Testi
         self.set_xy(50, start_y + 2)
@@ -96,7 +140,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.set_font('Arial', 'B', style.get('product_title_size', 14))
         r, g, b = self.primary_color
         self.set_text_color(r, g, b)
-        self.multi_cell(110, 6, nome, 0, 'L')
+        self.multi_cell(95, 6, nome, 0, 'L')
         
         # Codice SKU
         if codice:
@@ -116,51 +160,102 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.set_text_color(0, 0, 0)
         # Tronca descrizione lunga
         desc_short = (descrizione[:75] + '...') if len(descrizione) > 75 else descrizione
-        self.multi_cell(100, 6, desc_short, 0)
+        self.multi_cell(95, 6, desc_short, 0)
         
-        # Prezzo (se abilitato nelle impostazioni)
+        # Prezzi (se abilitato nelle impostazioni)
         if self.config.get('show_prices', True):
-            if tiers and len(tiers) > 1:
-                # Disegna tabella prezzi
-                table_x = 155
-                table_y = start_y + 5
-                self.set_xy(table_x, table_y)
-                self.set_font('Arial', 'B', 9)
-                self.set_text_color(0,0,0)
-                self.cell(15, 6, "Q.ta", 1, 0, 'C')
-                self.cell(20, 6, "Prezzo", 1, 1, 'C')
+            prices_to_show = [] # list of (label, value, color_rgb_tuple)
+            
+            if self.config.get('show_price_base', True):
+                prices_to_show.append(("Base", prezzo, (39, 174, 96))) # Verde per base
+            
+            if self.config.get('show_price2', False) and p2 > 0:
+                prices_to_show.append(("Listino 2", p2, (230, 126, 34))) # Arancione per listini secondari
                 
-                self.set_font('Arial', '', 9)
-                for qty, prc in tiers:
-                    self.set_x(table_x)
-                    self.cell(15, 6, f"{qty}+", 1, 0, 'C')
-                    self.cell(20, 6, f"EUR {prc:.2f}", 1, 1, 'R')
-            else:
-                # Prezzo singolo
-                self.set_xy(160, start_y + 10)
-                self.set_font('Arial', 'B', style.get('price_size', 16))
-                self.set_text_color(39, 174, 96) # Verde
-                self.cell(30, 10, f"EUR {prezzo:.2f}", 0, 1, 'R')
+            if self.config.get('show_price3', False) and p3 > 0:
+                prices_to_show.append(("Listino 3", p3, (230, 126, 34)))
+                
+            if self.config.get('show_price4', False) and p4 > 0:
+                prices_to_show.append(("Listino 4", p4, (230, 126, 34)))
+                
+            show_custom = self.config.get('show_custom_listini', [])
+            if show_custom and prod_id:
+                try:
+                    custom_prices = get_prezzi_prodotto(prod_id)
+                    for c_name in show_custom:
+                        if c_name in custom_prices and custom_prices[c_name] > 0:
+                            prices_to_show.append((c_name, custom_prices[c_name], (155, 89, 182))) # Viola per extra
+                except Exception as e:
+                    print(f"Errore nel recupero prezzi custom in pdf_export: {e}")
+            
+            if prices_to_show:
+                num_prices = len(prices_to_show)
+                line_h = 5.5
+                total_h = num_prices * line_h
+                y_start = start_y + (40 - total_h) / 2
+                
+                # Se c'è solo un prezzo ed ha tiered pricing, mostriamo la tabella
+                if num_prices == 1 and tiers and len(tiers) > 1:
+                    table_x = 155
+                    table_y = start_y + 5
+                    self.set_xy(table_x, table_y)
+                    self.set_font('Arial', 'B', 9)
+                    self.set_text_color(0,0,0)
+                    self.cell(15, 6, "Q.ta", 1, 0, 'C')
+                    self.cell(20, 6, "Prezzo", 1, 1, 'C')
+                    
+                    self.set_font('Arial', '', 9)
+                    for qty, prc in tiers:
+                        self.set_x(table_x)
+                        self.cell(15, 6, f"{qty}+", 1, 0, 'C')
+                        self.cell(20, 6, f"EUR {prc:.2f}", 1, 1, 'R')
+                else:
+                    # Mostra lista prezzi verticale allineata a destra
+                    f_size = 10 if num_prices > 2 else (12 if num_prices == 2 else 14)
+                    
+                    for idx, (lbl, val, col) in enumerate(prices_to_show):
+                        self.set_xy(145, y_start + (idx * line_h))
+                        self.set_font('Arial', 'B', f_size)
+                        self.set_text_color(*col)
+                        
+                        text = f"{lbl}: EUR {val:.2f}" if num_prices > 1 else f"EUR {val:.2f}"
+                        self.cell(43, line_h, text, 0, 1, 'R')
+                    self.set_text_color(0, 0, 0) # reset
 
         self.set_y(start_y + 45) # Spazio per il prossimo
 
-    def scheda_prodotto_grid(self, nome, categoria, descrizione, prezzo, immagine, x, y, w, h, tiers):
+
+    def scheda_prodotto_grid(self, nome, categoria, descrizione, prezzo, immagine, x, y, w, h, tiers, p2=0.0, p3=0.0, p4=0.0, prod_id=None):
         self.set_draw_color(220, 220, 220)
         self.rect(x, y, w, h)
 
-        # Immagine centrata (occupa circa 55% altezza)
-        img_h = h * 0.55
+        # Immagine centrata (occupa circa 45% altezza della scheda)
+        img_h_max = h * 0.45
         img_w_max = w - 10
         img_path = immagine.strip() if immagine else ""
         
-        if img_path and os.path.exists(img_path):
+        safe_res = get_safe_image_path(img_path)
+        if safe_res:
+            temp_path, img_w, img_h = safe_res
             try:
-                # Adattamento automatico con mantenimento proporzioni
-                self.image(img_path, x=x+5, y=y+5, w=img_w_max, h=img_h-5, keep_aspect_ratio=True)
-            except:
-                pass        
+                # Mantieni aspect ratio nel box max
+                aspect = img_w / img_h
+                if aspect > img_w_max / img_h_max:
+                    w_img = img_w_max
+                    h_img = img_w_max / aspect
+                else:
+                    h_img = img_h_max
+                    w_img = img_h_max * aspect
+                
+                # Centra nel box
+                x_offset = x + 5 + (img_w_max - w_img) / 2
+                y_offset = y + 5 + (img_h_max - h_img) / 2
+                
+                self.image(temp_path, x=x_offset, y=y_offset, w=w_img, h=h_img)
+            except Exception as e:
+                print(f"Errore rendering immagine scheda_prodotto_grid: {e}")
 
-        text_y = y + img_h + 2
+        text_y = y + img_h_max + 7
         style = self.config.get('style', {})
         
         # Titolo Prodotto in Griglia
@@ -181,31 +276,65 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.multi_cell(w - 4, 4.5, nome_pulito, 0, 'C')
         
         if self.config.get('show_prices', True):
-            price_y = self.get_y() + 1
-            if tiers and len(tiers) > 1:
-                # Tabella compatta per griglia
-                row_h = 4
-                self.set_font('Arial', '', 7)
-                self.set_text_color(0,0,0)
+            prices_to_show = []
+            
+            if self.config.get('show_price_base', True):
+                prices_to_show.append(("Base", prezzo, (39, 174, 96)))
+            
+            if self.config.get('show_price2', False) and p2 > 0:
+                prices_to_show.append(("L.2", p2, (230, 126, 34)))
                 
-                # Header
-                self.set_xy(x + 5, price_y)
-                self.cell(w-10, row_h, "Prezzi per quantità:", 0, 1, 'L')
+            if self.config.get('show_price3', False) and p3 > 0:
+                prices_to_show.append(("L.3", p3, (230, 126, 34)))
                 
-                for qty, prc in tiers:
-                    self.set_x(x + 5)
-                    self.cell(15, row_h, f"{qty}+ pz", 0, 0, 'L')
-                    self.cell(20, row_h, f"EUR {prc:.2f}", 0, 1, 'L')
-            else:
-                self.set_xy(x + 2, price_y + 2)
-                self.set_font('Arial', 'B', style.get('grid_price_size', 11))
+            if self.config.get('show_price4', False) and p4 > 0:
+                prices_to_show.append(("L.4", p4, (230, 126, 34)))
+                
+            show_custom = self.config.get('show_custom_listini', [])
+            if show_custom and prod_id:
+                try:
+                    custom_prices = get_prezzi_prodotto(prod_id)
+                    for c_name in show_custom:
+                        if c_name in custom_prices and custom_prices[c_name] > 0:
+                            lbl_abbrev = c_name[:5] + '.' if len(c_name) > 5 else c_name
+                            prices_to_show.append((lbl_abbrev, custom_prices[c_name], (155, 89, 182)))
+                except Exception as e:
+                    print(f"Errore nel recupero prezzi custom in pdf_export grid: {e}")
 
-                grid_price_color = style.get('grid_price_color', '#27ae60')
-                r, g, b = self._hex_to_rgb(grid_price_color)
-                self.set_text_color(r, g, b)
-
-                self.cell(w-4, 6, f"EUR {prezzo:.2f}", 0, 1, 'C')
-                self.set_text_color(0, 0, 0) # Reset
+            if len(prices_to_show) > 1:
+                price_y = self.get_y() + 1
+                self.set_xy(x + 2, price_y)
+                
+                f_size = 7 if len(prices_to_show) > 3 else 8
+                self.set_font('Arial', 'B', f_size)
+                
+                row_h = 3.5
+                for lbl, val, col in prices_to_show:
+                    self.set_x(x + 2)
+                    self.set_text_color(*col)
+                    self.cell(w - 4, row_h, f"{lbl}: EUR {val:.2f}", 0, 1, 'C')
+                self.set_text_color(0, 0, 0)
+            elif len(prices_to_show) == 1:
+                lbl, val, col = prices_to_show[0]
+                price_y = self.get_y() + 1
+                if tiers and len(tiers) > 1:
+                    row_h = 3.5
+                    self.set_font('Arial', '', 7)
+                    self.set_text_color(0,0,0)
+                    self.set_xy(x + 5, price_y)
+                    self.cell(w-10, row_h, "Prezzi per quantità:", 0, 1, 'C')
+                    
+                    for qty, prc in tiers:
+                        self.set_x(x + 5)
+                        self.cell((w-10)/2, row_h, f"{qty}+ pz", 0, 0, 'R')
+                        self.cell((w-10)/2, row_h, f"EUR {prc:.2f}", 0, 1, 'L')
+                else:
+                    self.set_xy(x + 2, price_y + 2)
+                    self.set_font('Arial', 'B', style.get('grid_price_size', 11))
+                    
+                    self.set_text_color(*col)
+                    self.cell(w-4, 6, f"EUR {val:.2f}", 0, 1, 'C')
+                    self.set_text_color(0, 0, 0)
 
 def get_catalog_data(config):
     conn = sqlite3.connect(DB_PATH)
@@ -214,7 +343,7 @@ def get_catalog_data(config):
     # Filtro Categoria
     category_filter = config.get('category_filter', 'Tutte le categorie')
     tipologia_filter = config.get('tipologia_filter', 'Tutte')
-    query = 'SELECT nome, categoria, descrizione, prezzo, immagine, prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, qta_min_2, qta_min_3, qta_min_4 FROM prodotti WHERE visibile=1'
+    query = 'SELECT nome, categoria, descrizione, prezzo, immagine, prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, qta_min_2, qta_min_3, qta_min_4, id FROM prodotti WHERE visibile=1'
     params = []
     
     if category_filter and category_filter != "Tutte le categorie":
@@ -231,7 +360,7 @@ def get_catalog_data(config):
         # Fallback se la colonna codice non dovesse esistere (non dovrebbe succedere se il db è aggiornato)
         # Nota: il filtro per categoria nel fallback è omesso per brevità in caso di errore schema, ma idealmente andrebbe replicato
         # Aggiunto anche tipologia_prodotto per consistenza
-        c.execute('SELECT nome, categoria, descrizione, prezzo, immagine, prezzo_secondario, "" as codice, "" as tipologia_prodotto, 0, 0, 0, 0, 0 FROM prodotti WHERE visibile=1')
+        c.execute('SELECT nome, categoria, descrizione, prezzo, immagine, prezzo_secondario, "" as codice, "" as tipologia_prodotto, 0, 0, 0, 0, 0, id FROM prodotti WHERE visibile=1')
         
     prodotti = c.fetchall()
     conn.close()
@@ -316,7 +445,7 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
                     row_y = pdf.get_y()
 
             # Unpack sicuro
-            nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4 = row_data
+            nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4, prod_id = row_data
             
             # Tracciamento Categoria per Indice
             if cat != last_category:
@@ -331,7 +460,7 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
             if p4 > 0 and q4 > 0: tiers.append((q4, p4))
 
             x = margin + (current_col * (col_w + col_gap))
-            pdf.scheda_prodotto_grid(nome, cat, descrizione, prezzo, immagine, x, row_y, col_w, box_h, tiers)
+            pdf.scheda_prodotto_grid(nome, cat, descrizione, prezzo, immagine, x, row_y, col_w, box_h, tiers, p2, p3, p4, prod_id)
             
             current_col += 1
             if current_col >= num_cols:
@@ -339,7 +468,7 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
                 row_y += box_h + 5 # Altezza box + margine verticale
     else:
         for row_data in prodotti:
-            nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4 = row_data
+            nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4, prod_id = row_data
             
             # Tracciamento Categoria per Indice
             if cat != last_category:
@@ -352,7 +481,7 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
             if p3 > 0 and q3 > 0: tiers.append((q3, p3))
             if p4 > 0 and q4 > 0: tiers.append((q4, p4))
 
-            pdf.scheda_prodotto(nome, cat, descrizione, prezzo, immagine, codice, tiers)
+            pdf.scheda_prodotto(nome, cat, descrizione, prezzo, immagine, codice, tiers, p2, p3, p4, prod_id)
             
     return current_category_map
 
@@ -367,19 +496,19 @@ def esporta_catalogo_pdf(filename='catalogo.pdf', config=None):
         category_order = config.get('category_order', [])
         if category_order:
             order_map = {cat: i for i, cat in enumerate(category_order)}
-            prodotti.sort(key=lambda p: order_map.get(p[2], float('inf')))
+            prodotti.sort(key=lambda p: order_map.get(p[1], float('inf')))
         else:
             # Fallback alfabetico se non c'è ordine custom
-            prodotti.sort(key=lambda p: (p[2] or "", p[1] or ""))
+            prodotti.sort(key=lambda p: (p[1] or "", p[0] or ""))
             
     elif sort_mode == 'Categoria (Alfabetico)':
-        prodotti.sort(key=lambda p: (p[2] or "", p[1] or ""))
+        prodotti.sort(key=lambda p: (p[1] or "", p[0] or ""))
         
     elif sort_mode == 'Nome':
-        prodotti.sort(key=lambda p: (p[1] or "").lower())
+        prodotti.sort(key=lambda p: (p[0] or "").lower())
         
     elif sort_mode == 'Codice (SKU)':
-        prodotti.sort(key=lambda p: str(p[8] or "").lower())
+        prodotti.sort(key=lambda p: str(p[6] or "").lower())
 
     layout = config.get('layout', 'Lista') if config else 'Lista'
     include_index = config.get('include_index', True)
