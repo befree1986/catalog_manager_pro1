@@ -1,5 +1,5 @@
 {
-    "version": "1.2.2",
-    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.2.2/CatalogoManager_Setup.exe",
-    "notes": "Versione: 1.1.9\nCorrezioni e patch:\n- Risolto il problema del salvataggio prodotti da Excel/Access (gestione valori vuoti).\n- Ripristinato il funzionamento del tasto 'Listini Extra' nel form di importazione."
+    "version": "1.2.3",
+    "url": "https://github.com/befree1986/catalog_manager_pro1/releases/download/v1.2.3/CatalogoManager_Setup.exe",
+    "notes": "Versione: 1.2.3\nCorrezioni e patch:\n- Risolto definitivamente il bug del pulsante '+ Aggiungi Mappatura Listino' che non rispondeva al click.\n- Riprogettata la gestione dei listini extra dinamici con inserimento nativo nel layout per scorrimento e ridisegno fluidi."
 }

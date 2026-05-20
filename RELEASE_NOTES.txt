@@ -1,4 +1,4 @@
-Versione: 1.1.9
+Versione: 1.2.3
 Correzioni e patch:
-- Risolto il problema del salvataggio prodotti da Excel/Access (gestione valori vuoti).
-- Ripristinato il funzionamento del tasto 'Listini Extra' nel form di importazione.
+- Risolto definitivamente il bug del pulsante '+ Aggiungi Mappatura Listino' che non rispondeva al click.
+- Riprogettata la gestione dei listini extra dinamici con inserimento nativo nel layout per scorrimento e ridisegno fluidi.
