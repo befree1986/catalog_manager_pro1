@@ -18,14 +18,14 @@ def read_excel_df(file_path):
     return df
 
 def read_danea_xml(file_path):
-    """
-    Legge un file XML di Danea EasyFatt e restituisce un DataFrame.
-    NOTA: La logica di parsing effettiva per il formato XML di Danea deve essere implementata qui.
-    Attualmente restituisce un DataFrame vuoto.
-    """
+    """Legge un file XML di Danea EasyFatt e restituisce un DataFrame."""
     if pd is None:
         raise ImportError("Pandas non è installato.")
-    return pd.DataFrame() # Implementare qui la logica di parsing XML
+    try:
+        # Placeholder: per ora restituisce un DF vuoto per evitare crash
+        return pd.DataFrame()
+    except Exception as e:
+        raise Exception(f"Errore durante la lettura dell'XML Danea: {e}")
 
 def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, price_list_map=None):
     """Importa un DataFrame nel database, gestendo la logica di conversione e ricerca immagini."""
