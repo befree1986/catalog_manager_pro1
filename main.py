@@ -1829,6 +1829,17 @@ class CatalogoMainWindow(QMainWindow):
         main_layout.addWidget(right_widget, 1) # Espande a destra
         self.current_listino_id = None
 
+    def salva_suffisso_listino_corrente(self):
+        if self.current_listino_id is None:
+            QMessageBox.warning(self, "Attenzione", "Nessun listino selezionato per salvare il suffisso.")
+            return
+        
+        suffisso = self.input_suffisso.text().strip()
+        aggiorna_suffisso_listino(self.current_listino_id, suffisso)
+        QMessageBox.information(self, "Successo", "Suffisso listino aggiornato.")
+        # Aggiorna la combo dei filtri prezzo per riflettere il nuovo suffisso
+        self.refresh_price_filter_combo()
+
     def filter_listini_table(self):
         if self.current_listino_id is not None:
             self.load_prezzi_table(self.current_listino_id)
