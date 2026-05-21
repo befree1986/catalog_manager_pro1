@@ -1,8 +1,13 @@
+Versione: 1.3.0
+Correzioni e Funzionalità:
+- Risolto crash all'avvio: Corretto l'errore 'salva_suffisso_listino_corrente' che impediva l'avvio dell'applicazione.
+- Miglioramento: Logging di sistema potenziato per una diagnostica più rapida.
+- Ottimizzazione percorsi: Gestione dinamica dei path per ambienti EXE congelati.
+
 Versione: 1.2.9
 Correzioni e Funzionalità:
 - Risolto bug critico di avvio: migliorata la robustezza dell'inizializzazione del database e del sistema di logging.
 - Ottimizzazione percorsi: gestione dinamica dei path per ambienti EXE congelati.
-
 Versione: 1.2.7
 Correzioni e Funzionalità:
 - Selezione listini prezzi nel PDF: Aggiunta la possibilità di selezionare individualmente quali listini visualizzare nel catalogo PDF (Prezzo Base, Listino 2, Listino 3, Listino 4 e i listini extra/custom presenti nel database come IVA o Accise).
