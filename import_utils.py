@@ -8,6 +8,7 @@ try:
 except ImportError:
     pyodbc = None
 import os
+import xml.etree.ElementTree as ET
 from db import DB_PATH
 
 def read_excel_df(file_path):
@@ -23,8 +24,24 @@ def read_danea_xml(file_path):
     if pd is None:
         raise ImportError("Pandas non è installato.")
     try:
-        # Placeholder: per ora restituisce un DF vuoto per evitare crash
-        return pd.DataFrame()
+        tree = ET.parse(file_path)
+        root = tree.getroot()
+        
+        prodotti = []
+        # Danea XML tipicamente ha i prodotti sotto <Articoli><Articolo>
+        for articolo in root.findall('.//Articolo'):
+            dati = {}
+            for campo in articolo:
+                # Normalizziamo i nomi dei campi in minuscolo per compatibilità
+                tag_name = campo.tag.lower()
+                dati[tag_name] = campo.text
+            prodotti.append(dati)
+            
+        if not prodotti:
+            return pd.DataFrame()
+            
+        df = pd.DataFrame(prodotti)
+        return df
     except Exception as e:
         raise Exception(f"Errore durante la lettura dell'XML Danea: {e}")
 def normalize_key(val):
@@ -159,7 +176,12 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
                             if res:
                                 listino_id = res[0]
                             else:
-                                c.execute('INSERT OR IGNORE INTO listini (nome, descrizione) VALUES (?, ?)', (listino_nome, "Importato"))
+                                # Rilevamento intelligente del suffisso (es. % per IVA)
+                                default_suffisso = "%" if "iva" in listino_nome.lower() else "€"
+                                try:
+                                    c.execute('INSERT OR IGNORE INTO listini (nome, descrizione, suffisso) VALUES (?, ?, ?)', (listino_nome, "Importato", default_suffisso))
+                                except sqlite3.OperationalError:
+                                    c.execute('INSERT OR IGNORE INTO listini (nome, descrizione) VALUES (?, ?)', (listino_nome, "Importato"))
                                 c.execute('SELECT id FROM listini WHERE nome = ?', (listino_nome,))
                                 res_new = c.fetchone()
                                 listino_id = res_new[0] if res_new else None

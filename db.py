@@ -75,6 +75,11 @@ def init_db():
         descrizione TEXT
     )''')
     
+    try:
+        c.execute("ALTER TABLE listini ADD COLUMN suffisso TEXT DEFAULT '€'")
+    except sqlite3.OperationalError:
+        pass # La colonna suffisso esiste già
+    
     c.execute('''CREATE TABLE IF NOT EXISTS prezzi_listini (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         listino_id INTEGER,

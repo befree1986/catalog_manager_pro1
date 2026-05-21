@@ -26,13 +26,36 @@ except ImportError:
     requests = None
 
 from prodotto_dialog import ProdottoDialog
-from prodotti_manager import lista_prodotti, aggiungi_prodotto, modifica_prodotto, cancella_prodotto, get_existing_skus, pulisci_database, svuota_tutto, get_tipologie_prodotto, rinomina_tipologia, cancella_tipologia, aggiorna_tipologia_per_ids, get_listini, crea_listino, cancella_listino, get_prezzi_listino, aggiorna_prezzo_listino, salva_catalogo_db, get_cataloghi_db, rinomina_catalogo_db, get_counts_per_tipologia, cancella_catalogo_db, get_prezzi_prodotto
+from prodotti_manager import (lista_prodotti, aggiungi_prodotto, modifica_prodotto, 
+                              cancella_prodotto, get_existing_skus, pulisci_database, 
+                              svuota_tutto, get_tipologie_prodotto, rinomina_tipologia, 
+                              cancella_tipologia, aggiorna_tipologia_per_ids, get_listini, 
+                              crea_listino, cancella_listino, get_prezzi_listino, 
+                              aggiorna_prezzo_listino, salva_catalogo_db, get_cataloghi_db, 
+                              rinomina_catalogo_db, get_counts_per_tipologia, 
+                              cancella_catalogo_db, get_prezzi_prodotto,
+                              get_suffisso_listino, aggiorna_suffisso_listino, get_suffissi_listini)
 from email_utils import invia_email
 from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
-APP_VERSION = "1.2.7" # Selezione listini PDF e fix rendering immagini
+APP_VERSION = "1.2.8" # Listini personalizzabili (IVA % e simboli liberi)
+
+def format_prezzo_custom(prezzo, suffisso):
+    """Formatta in modo intelligente un prezzo personalizzato in base al suo suffisso."""
+    suff_clean = suffisso.strip()
+    if not suff_clean:
+        return f"{prezzo:.2f}"
+    if suff_clean == '%':
+        return f"{prezzo:.2f} %"
+    if suff_clean == '€':
+        return f"€ {prezzo:.2f}"
+    # Se il suffisso è un simbolo di valuta comune lo mettiamo prima se opportuno, altrimenti dopo
+    if suff_clean in ('$', '£', '¥'):
+        return f"{suff_clean} {prezzo:.2f}"
+    return f"{prezzo:.2f} {suff_clean}"
+
 UPDATE_URL = "https://raw.githubusercontent.com/befree1986/catalog_manager_pro1/main/version.json" 
 
 def parse_version(v):
@@ -146,9 +169,12 @@ class ProductCard(QWidget):
             # Listini custom/dinamici da DB
             try:
                 custom_prices = get_prezzi_prodotto(p[0])
+                suffissi = get_suffissi_listini()
                 for listino_nome, custom_p in custom_prices.items():
                     if custom_p > 0:
-                        price_text += f"<br><span style='color:#9b59b6; font-size:11px;'>{listino_nome}: € {custom_p:.2f}</span>"
+                        suff = suffissi.get(listino_nome, "€")
+                        valore_formattato = format_prezzo_custom(custom_p, suff)
+                        price_text += f"<br><span style='color:#9b59b6; font-size:11px;'>{listino_nome}: {valore_formattato}</span>"
             except Exception as e:
                 print(f"Errore nel recupero dei prezzi extra per prodotto {p[0]}: {e}")
                 
@@ -172,7 +198,10 @@ class ProductCard(QWidget):
             try:
                 custom_prices = get_prezzi_prodotto(p[0])
                 prezzo_cust = custom_prices.get(listino_nome, 0.0)
-                price_text = f"<b style='font-size:16px; color:#9b59b6;'>{listino_nome}: € {prezzo_cust:.2f}</b>"
+                suffissi = get_suffissi_listini()
+                suff = suffissi.get(listino_nome, "€")
+                valore_formattato = format_prezzo_custom(prezzo_cust, suff)
+                price_text = f"<b style='font-size:16px; color:#9b59b6;'>{listino_nome}: {valore_formattato}</b>"
             except Exception as e:
                 price_text = f"<b style='font-size:16px; color:#9b59b6;'>{listino_nome}: N/D</b>"
 
@@ -1651,7 +1680,8 @@ class CatalogoMainWindow(QMainWindow):
         
         # Carica listini dinamici dal DB
         listini_db = get_listini()
-        for list_id, name, desc in listini_db:
+        for item in listini_db:
+            list_id, name = item[0], item[1]
             self.price_filter_combo.addItem(f"📊 Listino: {name}", list_id)
             
         # Tenta di ripristinare la selezione precedente
@@ -1726,6 +1756,30 @@ class CatalogoMainWindow(QMainWindow):
         info_lbl = QLabel("Modifica i prezzi nella colonna 'Prezzo Listino'. Le modifiche vengono salvate automaticamente premendo 'Invio' o cambiando cella, oppure cliccando su Salva.")
         info_lbl.setStyleSheet("color: gray; font-style: italic; margin-bottom: 5px;")
         layout.addWidget(info_lbl)
+
+        # --- Edit Suffix ---
+        self.suffisso_container = QWidget()
+        suffisso_layout = QHBoxLayout(self.suffisso_container)
+        suffisso_layout.setContentsMargins(0, 2, 0, 8)
+        
+        lbl_suff = QLabel("Simbolo / Suffisso Listino (es. %, €, CHF, mq):")
+        lbl_suff.setStyleSheet("font-weight: bold; color: #34495e;")
+        
+        self.input_suffisso = QLineEdit()
+        self.input_suffisso.setPlaceholderText("€")
+        self.input_suffisso.setFixedWidth(80)
+        self.input_suffisso.setToolTip("Questo simbolo verrà usato per visualizzare i prezzi nella dashboard e nel PDF.")
+        
+        btn_suff = QPushButton("💾 Salva Simbolo")
+        btn_suff.setStyleSheet("background-color: #2ecc71; color: white; padding: 4px 8px; font-weight: bold; border-radius: 3px;")
+        btn_suff.clicked.connect(self.salva_suffisso_listino_corrente)
+        
+        suffisso_layout.addWidget(lbl_suff)
+        suffisso_layout.addWidget(self.input_suffisso)
+        suffisso_layout.addWidget(btn_suff)
+        suffisso_layout.addStretch()
+        
+        layout.addWidget(self.suffisso_container)
 
         # Tabella visualizzazione prezzi
         self.listini_table = QTableWidget()

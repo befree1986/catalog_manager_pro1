@@ -113,20 +113,63 @@ def svuota_tutto():
 def get_listini():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT * FROM listini')
+    try:
+        c.execute('SELECT id, nome, descrizione, suffisso FROM listini')
+    except sqlite3.OperationalError:
+        c.execute('SELECT id, nome, descrizione FROM listini')
     res = c.fetchall()
     conn.close()
     return res
 
-def crea_listino(nome, descrizione=""):
+def crea_listino(nome, descrizione="", suffisso="€"):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
-        c.execute('INSERT INTO listini (nome, descrizione) VALUES (?, ?)', (nome, descrizione))
+        try:
+            c.execute('INSERT INTO listini (nome, descrizione, suffisso) VALUES (?, ?, ?)', (nome, descrizione, suffisso))
+        except sqlite3.OperationalError:
+            c.execute('INSERT INTO listini (nome, descrizione) VALUES (?, ?)', (nome, descrizione))
         conn.commit()
     except sqlite3.IntegrityError:
         pass # Nome già esistente
     conn.close()
+
+def get_suffisso_listino(listino_id):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('SELECT suffisso FROM listini WHERE id=?', (str(listino_id),))
+        res = c.fetchone()
+        suffisso = res[0] if res else '€'
+    except sqlite3.OperationalError:
+        suffisso = '€'
+    conn.close()
+    return suffisso
+
+def aggiorna_suffisso_listino(listino_id, suffisso):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('UPDATE listini SET suffisso=? WHERE id=?', (suffisso, str(listino_id)))
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
+    conn.close()
+
+def get_suffissi_listini():
+    """Restituisce un dizionario {listino_nome: suffisso} per tutti i listini."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('SELECT nome, suffisso FROM listini')
+        res = dict(c.fetchall())
+    except sqlite3.OperationalError:
+        c.execute('SELECT nome FROM listini')
+        names = [x[0] for x in c.fetchall()]
+        res = {name: '€' for name in names}
+    conn.close()
+    return res
+
 
 def cancella_listino(listino_id):
     conn = sqlite3.connect(DB_PATH)
