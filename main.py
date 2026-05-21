@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.2" # Versione stabile pronta per il rilascio
+APP_VERSION = "1.3.3" # Fix matching immagini e layout sidebar/grid
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1655,7 +1655,7 @@ class CatalogoMainWindow(QMainWindow):
         
         self.grid_container = QWidget()
         self.grid_layout = QGridLayout(self.grid_container)
-        self.grid_layout.setSpacing(15)
+        self.grid_layout.setSpacing(20)
         self.grid_layout.setAlignment(Qt.AlignTop)
         
         scroll.setWidget(self.grid_container)
@@ -2837,9 +2837,13 @@ class CatalogoMainWindow(QMainWindow):
         prodotti = lista_prodotti()
         filtro = self.search_input.text().lower()
         
+        # Aggiungiamo un margine interno per evitare sovrapposizioni con la sidebar
+        self.grid_container.setContentsMargins(15, 15, 15, 15)
+        
         row = 0
         col = 0
-        max_cols = 3
+        # Calcolo dinamico colonne o fisso a 3 ma con spazio garantito
+        max_cols = 3 
         
         # Memorizziamo i prodotti filtrati correnti per la modifica massiva
         self.prodotti_filtrati_ids = []

@@ -84,10 +84,10 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
         total_rows = len(df)
         for i, (_, row) in enumerate(df.iterrows()):
             # Estrazione dati con valori di default
-            nome = get_row_value(row, 'nome', 'Nuovo Prodotto')
-            descrizione = get_row_value(row, 'descrizione', '')
-            categoria = get_row_value(row, 'categoria', 'Generale')
-            tipologia_prodotto = get_row_value(row, 'tipologia_prodotto', 'Generico')
+            nome = str(get_row_value(row, 'nome') or 'Nuovo Prodotto')
+            descrizione = str(get_row_value(row, 'descrizione') or '')
+            categoria = str(get_row_value(row, 'categoria') or 'Generale')
+            tipologia_prodotto = str(get_row_value(row, 'tipologia_prodotto') or 'Generico')
             
             # Funzione di utilità interna per pulizia prezzi
             def clean_price(val):
@@ -98,27 +98,24 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
                     return 0.0
 
             # Gestione Codice/SKU (i dati dalla tabella sono stringhe)
-            codice = str(row.get('codice', '') or row.get('sku', '')).strip()
-            if codice.lower() == 'nan': codice = ''
+            codice = str(get_row_value(row, 'codice') or get_row_value(row, 'sku') or '').strip()
+            if codice.lower() in ('nan', 'none'): codice = ''
             
-            # Normalizziamo il codice per rimuovere eventuali .0 da Excel
-            codice_normalizzato = codice
-            if codice_normalizzato.endswith('.0'):
-                codice_normalizzato = codice_normalizzato[:-2]
+            codice_normalizzato = normalize_key(codice)
 
             # Conversione sicura dei prezzi
-            prezzo = clean_price(row.get('prezzo', 0))
-            prezzo_secondario = clean_price(row.get('prezzo_secondario', 0))
-            prezzo3 = clean_price(row.get('prezzo3', 0))
-            prezzo4 = clean_price(row.get('prezzo4', 0))
+            prezzo = clean_price(get_row_value(row, 'prezzo', 0))
+            prezzo_secondario = clean_price(get_row_value(row, 'prezzo_secondario', 0))
+            prezzo3 = clean_price(get_row_value(row, 'prezzo3', 0))
+            prezzo4 = clean_price(get_row_value(row, 'prezzo4', 0))
             
-            qta_min_2 = int(float(str(row.get('qta_min_2', 0) or 0).replace(',', '.')))
-            qta_min_3 = int(float(str(row.get('qta_min_3', 0) or 0).replace(',', '.')))
-            qta_min_4 = int(float(str(row.get('qta_min_4', 0) or 0).replace(',', '.')))
+            qta_min_2 = int(float(str(get_row_value(row, 'qta_min_2', 0)).replace(',', '.')))
+            qta_min_3 = int(float(str(get_row_value(row, 'qta_min_3', 0)).replace(',', '.')))
+            qta_min_4 = int(float(str(get_row_value(row, 'qta_min_4', 0)).replace(',', '.')))
 
             visibile = 1
-            immagine = str(row.get('immagine', '')).strip()
-            if immagine.lower() == 'nan': immagine = ''
+            immagine = str(get_row_value(row, 'immagine') or '').strip()
+            if immagine.lower() in ('nan', 'none'): immagine = ''
 
             # LOGICA IMMAGINI DA CARTELLA:
             # 1. Se l'utente ha selezionato una cartella immagini, proviamo a risolverla tramite il valore mappato in 'immagine'
