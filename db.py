@@ -1,8 +1,15 @@
 import sqlite3
 import os
+import sys
 
 # Definiamo un percorso assoluto per il database basato sulla posizione dello script
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'catalogo.db')
+if getattr(sys, 'frozen', False):
+    # Se il programma è un EXE compilato
+    application_path = os.path.dirname(sys.executable)
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+DB_PATH = os.path.join(application_path, 'catalogo.db')
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)

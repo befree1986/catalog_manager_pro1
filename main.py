@@ -5,6 +5,26 @@ import re
 import datetime
 import json
 import logging
+
+APP_VERSION = "1.2.9" # Correzione crash avvio e miglioramento logging
+
+# --- SETUP LOGGING IMMEDIATO ---
+# Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
+if getattr(sys, 'frozen', False):
+    base_dir = os.path.dirname(sys.executable)
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+logging.basicConfig(
+    filename=os.path.join(base_dir, 'debug_log.txt'),
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    encoding='utf-8'
+)
+
+# Log di avvio per confermare che il logging funziona
+logging.error(f"--- Tentativo di avvio applicazione v{APP_VERSION} ---")
+
 try:
     import pandas as pd # Requires 'pip install pandas openpyxl'
 except ImportError:
@@ -39,8 +59,6 @@ from email_utils import invia_email
 from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
-
-APP_VERSION = "1.2.8" # Listini personalizzabili (IVA % e simboli liberi)
 
 def format_prezzo_custom(prezzo, suffisso):
     """Formatta in modo intelligente un prezzo personalizzato in base al suo suffisso."""
@@ -3237,15 +3255,6 @@ class CatalogoMainWindow(QMainWindow):
                 QMessageBox.information(self, 'Invio', 'Email inviata!')
 
 if __name__ == '__main__':
-    # Configurazione del sistema di logging
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    logging.basicConfig(
-        filename=os.path.join(base_dir, 'debug_log.txt'),
-        level=logging.ERROR,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        encoding='utf-8'
-    )
-
     app = QApplication(sys.argv)
     try:
         window = CatalogoMainWindow()
