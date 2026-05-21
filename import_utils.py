@@ -45,17 +45,25 @@ def read_danea_xml(file_path):
     except Exception as e:
         raise Exception(f"Errore durante la lettura dell'XML Danea: {e}")
 def normalize_key(val):
-    if not val:
+    if val is None or str(val).lower() in ('', 'nan', 'none'):
         return ""
-    val_str = str(val).strip()
-    # Rimuovi il suffisso .0 se è una rappresentazione float di un intero
-    if val_str.endswith('.0'):
-        val_str = val_str[:-2]
+    s = str(val).strip().lower()
     # Rimuovi estensione se presente (es. .jpg, .png)
-    name, ext = os.path.splitext(val_str)
+    name, ext = os.path.splitext(s)
     if ext.lower() in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
-        val_str = name
-    return val_str.lower().strip()
+        s = name
+    # Rimuovi il suffisso .0 se è una rappresentazione float di un intero (es. "100.0")
+    if s.endswith('.0'):
+        s = s[:-2]
+    return s.strip()
+
+def get_row_value(row, key, default=""):
+    """Recupera un valore da una riga Pandas in modo case-insensitive."""
+    for col in row.index:
+        if col.lower().strip() == key.lower().strip():
+            val = row[col]
+            return val if pd is not None and pd.notna(val) else default
+    return default
 
 def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, price_list_map=None):
     """Importa un DataFrame nel database, gestendo la logica di conversione e ricerca immagini."""
@@ -67,20 +75,19 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
     if images_folder and os.path.exists(images_folder):
         try:
             for f in os.listdir(images_folder):
-                name, ext = os.path.splitext(f)
-                if ext.lower() in ['.jpg', '.jpeg', '.png', '.webp', '.bmp']:
-                    # Chiave normalizzata: es. "1001"
-                    image_map[name.lower().strip()] = os.path.join(images_folder, f)
+                key = normalize_key(f)
+                if key:
+                    image_map[key] = os.path.join(images_folder, f)
         except OSError: pass
 
     try:
         total_rows = len(df)
         for i, (_, row) in enumerate(df.iterrows()):
             # Estrazione dati con valori di default
-            nome = row.get('nome', 'Nuovo Prodotto')
-            descrizione = row.get('descrizione', '')
-            categoria = row.get('categoria', 'Generale')
-            tipologia_prodotto = row.get('tipologia_prodotto', 'Generico')
+            nome = get_row_value(row, 'nome', 'Nuovo Prodotto')
+            descrizione = get_row_value(row, 'descrizione', '')
+            categoria = get_row_value(row, 'categoria', 'Generale')
+            tipologia_prodotto = get_row_value(row, 'tipologia_prodotto', 'Generico')
             
             # Funzione di utilità interna per pulizia prezzi
             def clean_price(val):

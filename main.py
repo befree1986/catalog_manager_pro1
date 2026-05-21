@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.0" # Correzione crash avvio, miglioramento logging e fix salva_suffisso_listino_corrente
+APP_VERSION = "1.3.2" # Versione stabile pronta per il rilascio
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
