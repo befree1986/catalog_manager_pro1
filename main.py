@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.5" # Fix definitivo immagini, layout filtri e crash suffisso
+APP_VERSION = "1.3.6" # Nuova funzione Sincronizza Immagini per gruppo
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -56,7 +56,7 @@ from prodotti_manager import (lista_prodotti, aggiungi_prodotto, modifica_prodot
                               cancella_catalogo_db, get_prezzi_prodotto,
                               get_suffisso_listino, aggiorna_suffisso_listino, get_suffissi_listini)
 from email_utils import invia_email
-from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, pyodbc
+from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, sincronizza_immagini_database, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
 
@@ -1610,6 +1610,11 @@ class CatalogoMainWindow(QMainWindow):
         btn_mass_edit = QPushButton("🏷️ Assegna Filtrati")
         btn_mass_edit.clicked.connect(self.modifica_tipologia_massiva)
         header_r1.addWidget(btn_mass_edit)
+
+        btn_sync = QPushButton("🔄 Sincronizza Immagini")
+        btn_sync.setToolTip("Associa automaticamente le immagini della cartella scelta ai prodotti di questo gruppo")
+        btn_sync.clicked.connect(self.sincronizza_immagini_correnti)
+        header_r1.addWidget(btn_sync)
 
         btn_add = QPushButton("➕ Nuovo")
         btn_add.clicked.connect(self.nuovo_articolo)

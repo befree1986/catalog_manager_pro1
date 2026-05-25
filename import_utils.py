@@ -213,6 +213,66 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
     finally:
         conn.close()
 
+def sincronizza_immagini_database(tipologia_filter, images_folder, progress_callback=None):
+    """Cerca e aggiorna i percorsi delle immagini per i prodotti esistenti nel database."""
+    if not images_folder or not os.path.exists(images_folder):
+        return 0
+    
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # 1. Mappa immagini presenti nella cartella
+    image_map = {}
+    try:
+        for f in os.listdir(images_folder):
+            key = normalize_key(f)
+            if key:
+                image_map[key] = os.path.join(images_folder, f)
+    except OSError as e:
+        logging.error(f"Errore scansione cartella sync: {e}")
+        conn.close()
+        return 0
+
+    # 2. Recupera prodotti filtrati
+    query = "SELECT id, nome, codice, immagine FROM prodotti"
+    params = []
+    if tipologia_filter and tipologia_filter != "Tutte":
+        query += " WHERE tipologia_prodotto = ?"
+        params.append(tipologia_filter)
+    
+    c.execute(query, params)
+    prodotti = c.fetchall()
+    
+    updated_count = 0
+    total = len(prodotti)
+    
+    for i, (p_id, nome, codice, img_attuale) in enumerate(prodotti):
+        resolved_path = None
+        
+        # Prova con il codice/SKU
+        if codice:
+            code_key = normalize_key(codice)
+            if code_key in image_map:
+                resolved_path = image_map[code_key]
+        
+        # Prova con il valore attuale del campo immagine (se è solo un nome file)
+        if not resolved_path and img_attuale:
+            img_key = normalize_key(img_attuale)
+            if img_key in image_map:
+                resolved_path = image_map[img_key]
+        
+        # Aggiorna se abbiamo trovato qualcosa di nuovo o diverso
+        if resolved_path and resolved_path != img_attuale:
+            c.execute("UPDATE prodotti SET immagine = ? WHERE id = ?", (resolved_path, p_id))
+            updated_count += 1
+            
+        if progress_callback:
+            progress_callback(i + 1, total)
+            
+    conn.commit()
+    conn.close()
+    return updated_count
+
 def get_access_tables(file_path):
     """Restituisce una lista delle tabelle presenti nel file Access."""
     if pyodbc is None:
