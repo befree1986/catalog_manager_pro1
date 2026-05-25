@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.4" # Fix immagini non caricate e layout filtro prezzi
+APP_VERSION = "1.3.5" # Fix definitivo immagini, layout filtri e crash suffisso
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1594,28 +1594,40 @@ class CatalogoMainWindow(QMainWindow):
         # --- PAGINA 1: Griglia dei Prodotti (vista dettaglio gruppo) ---
         page_prodotti_grid = QWidget()
         prodotti_layout = QVBoxLayout(page_prodotti_grid)
+        prodotti_layout.setContentsMargins(10, 10, 10, 10)
 
-        # Header con pulsante Indietro, ricerca, etc.
-        header = QHBoxLayout()
-        
-        btn_back = QPushButton("⬅️ Torna ai Gruppi")
+        # --- Header Riga 1: Navigazione e Titolo ---
+        header_r1 = QHBoxLayout()
+        btn_back = QPushButton("⬅️ Gruppi")
         btn_back.clicked.connect(lambda: self.prodotti_stack.setCurrentIndex(0))
-        header.addWidget(btn_back)
-
+        header_r1.addWidget(btn_back)
+        
         self.prodotti_page_title = QLabel("")
-        self.prodotti_page_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c3e50;")
-        header.addWidget(self.prodotti_page_title)
-        header.addStretch()
+        self.prodotti_page_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        header_r1.addWidget(self.prodotti_page_title)
+        header_r1.addStretch()
+
+        btn_mass_edit = QPushButton("🏷️ Assegna Filtrati")
+        btn_mass_edit.clicked.connect(self.modifica_tipologia_massiva)
+        header_r1.addWidget(btn_mass_edit)
+
+        btn_add = QPushButton("➕ Nuovo")
+        btn_add.clicked.connect(self.nuovo_articolo)
+        header_r1.addWidget(btn_add)
+        prodotti_layout.addLayout(header_r1)
+
+        # --- Header Riga 2: Filtri e Ricerca (per evitare sovrapposizioni) ---
+        header_r2 = QHBoxLayout()
+        header_r2.setContentsMargins(0, 5, 0, 10)
         
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Cerca per nome o categoria...")
         self.search_input.setStyleSheet("padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size:14px;")
         self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
-        header.addWidget(self.search_input)
+        header_r2.addWidget(self.search_input, 2)
 
-        # Filtro Visualizzazione Prezzi / Listino
         self.price_filter_combo = QComboBox()
-        self.price_filter_combo.setStyleSheet("padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size:14px; min-width: 180px;")
+        self.price_filter_combo.setStyleSheet("padding: 8px; border: 1px solid #bdc3c7; border-radius: 4px; font-size:14px; min-width: 200px;")
         self.price_filter_combo.addItems([
             "👀 Tutti i Prezzi", 
             "💰 Prezzo Base", 
@@ -1624,30 +1636,14 @@ class CatalogoMainWindow(QMainWindow):
             "💰 Listino 4"
         ])
         self.price_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
-        header.addWidget(self.price_filter_combo)
-        
-        # Bottone Modifica Massiva
-        btn_mass_edit = QPushButton("🏷️ Assegna a Filtrati")
-        btn_mass_edit.setToolTip("Assegna la tipologia selezionata a tutti i prodotti attualmente visibili in griglia")
-        btn_mass_edit.setProperty("class", "QuickAction")
-        btn_mass_edit.clicked.connect(self.modifica_tipologia_massiva)
-        header.addWidget(btn_mass_edit)
+        header_r2.addWidget(self.price_filter_combo, 1)
 
-        btn_add = QPushButton("➕ Nuovo Prodotto")
-        btn_add.setProperty("class", "QuickAction")
-        btn_add.clicked.connect(self.nuovo_articolo)
-        header.addWidget(btn_add)
-
-        btn_import = QPushButton("📥 Importa da Excel")
-        btn_import.setProperty("class", "QuickAction")
+        btn_import = QPushButton("📥 Importa Excel")
         btn_import.clicked.connect(self.importa_excel)
-        header.addWidget(btn_import)
+        header_r2.addWidget(btn_import)
         
-        btn_import_access = QPushButton("🗄️ Importa da Access")
-        btn_import_access.setProperty("class", "QuickAction")
-        btn_import_access.clicked.connect(self.importa_access)
-        header.addWidget(btn_import_access)
-        prodotti_layout.addLayout(header)
+        prodotti_layout.addLayout(header_r2)
+
         
         # Scroll Area per la Griglia
         scroll = QScrollArea()

@@ -16,7 +16,8 @@ def read_excel_df(file_path):
     """Legge un file Excel, normalizza le colonne e restituisce un DataFrame."""
     if pd is None:
         raise ImportError("Pandas non è installato.")
-    df = pd.read_excel(file_path)
+    # dtype=str assicura che codici come "00344" non vengano letti come numeri e perdano gli zeri
+    df = pd.read_excel(file_path, dtype=str)
     df.columns = df.columns.str.lower()
     return df
 
