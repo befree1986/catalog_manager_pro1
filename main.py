@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.8" # Fix definitivo AttributeError per metodi di classe e layout
+APP_VERSION = "1.3.9" # Ripristino struttura file e fix entry point
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -2594,15 +2594,6 @@ class CatalogoMainWindow(QMainWindow):
                 invia_email(destinatario, 'Catalogo Prodotti', 'In allegato il catalogo.', file_path)
                 QMessageBox.information(self, 'Invio', 'Email inviata!')
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    try:
-        window = CatalogoMainWindow()
-        window.show()
-        sys.exit(app.exec_())
-    except Exception as e:
-        logging.exception("Errore fatale non gestito durante l'esecuzione:")
-        sys.exit(1)
     def _check_db_writable(self):
         """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
         try:
@@ -4751,6 +4742,16 @@ if __name__ == '__main__':
             if ok and destinatario:
                 invia_email(destinatario, 'Catalogo Prodotti', 'In allegato il catalogo.', file_path)
                 QMessageBox.information(self, 'Invio', 'Email inviata!')
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    try:
+        window = CatalogoMainWindow()
+        window.show()
+        sys.exit(app.exec_())
+    except Exception as e:
+        logging.exception("Errore fatale non gestito durante l'esecuzione:")
+        sys.exit(1)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
