@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.6" # Nuova funzione Sincronizza Immagini per gruppo
+APP_VERSION = "1.3.7" # Fix AttributeError e SMTP credentials
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1549,7 +1549,7 @@ class CatalogoMainWindow(QMainWindow):
     def setup_prodotti_page(self):
         # Layout principale che conterrà lo stack per la navigazione a 2 livelli
         main_layout = QVBoxLayout(self.page_prodotti)
-        main_layout.setContentsMargins(35, 10, 10, 10) # Margine sinistro aumentato per garantire spazio dalla sidebar
+        main_layout.setContentsMargins(40, 10, 10, 10) # Margine sinistro aumentato per garantire spazio dalla sidebar
         self.prodotti_stack = QStackedWidget()
         main_layout.addWidget(self.prodotti_stack)
 
