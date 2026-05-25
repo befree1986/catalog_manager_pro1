@@ -2,6 +2,12 @@ Versione: 1.3.2
 Correzioni e Funzionalità:
 - Consolidamento del sistema di importazione e matching immagini.
 
+Versione: 1.3.4
+Correzioni e Funzionalità:
+- Risolto problema caricamento immagini: ulteriormente migliorata la logica di matching tra SKU/Codice e file immagine.
+- Correzione layout: il filtro prezzi nella scheda prodotti non è più coperto dalla barra laterale.
+- Debug: Livello di logging impostato su DEBUG per una diagnostica più dettagliata in caso di problemi.
+
 Versione: 1.3.1
 Correzioni e Funzionalità:
 - Risolto problema caricamento immagini: potenziata la logica di matching tra SKU/Codice e file immagine nella cartella selezionata.

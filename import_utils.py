@@ -9,6 +9,7 @@ except ImportError:
     pyodbc = None
 import os
 import xml.etree.ElementTree as ET
+import logging
 from db import DB_PATH
 
 def read_excel_df(file_path):
@@ -77,8 +78,11 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             for f in os.listdir(images_folder):
                 key = normalize_key(f)
                 if key:
+                    logging.debug(f"Image map: Adding key '{key}' for file '{f}'")
                     image_map[key] = os.path.join(images_folder, f)
-        except OSError: pass
+        except OSError as e: 
+            logging.error(f"Errore durante la scansione della cartella immagini '{images_folder}': {e}")
+            pass
 
     try:
         total_rows = len(df)
@@ -121,20 +125,24 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
             # 1. Se l'utente ha selezionato una cartella immagini, proviamo a risolverla tramite il valore mappato in 'immagine'
             # 2. Se non lo trova o non è mappata, proviamo tramite il 'codice'
             if images_folder:
+                logging.debug(f"Processing product '{nome}' for image resolution. Initial image field: '{immagine}', SKU/Code: '{codice}'")
                 resolved = False
                 
                 # Prova prima con il valore presente nel campo immagine (es. nome file o codice scritto nella colonna)
                 if immagine:
                     img_key = normalize_key(immagine)
                     if img_key in image_map:
+                        logging.debug(f"Image resolved by 'immagine' field: '{img_key}' -> '{image_map[img_key]}'")
                         immagine = image_map[img_key]
                         resolved = True
                 
                 # Se non risolto, prova con il codice a barre / SKU
                 if not resolved and codice_normalizzato:
-                    code_key = normalize_key(codice_normalizzato)
-                    if code_key in image_map:
-                        immagine = image_map[code_key]
+                    # codice_normalizzato è già normalizzato, usalo direttamente come chiave
+                    if codice_normalizzato in image_map:
+                        logging.debug(f"Image resolved by 'codice' field: '{codice_normalizzato}' -> '{image_map[codice_normalizzato]}'")
+                        immagine = image_map[codice_normalizzato]
+                        resolved = True
 
             c.execute('''INSERT INTO prodotti (nome, categoria, descrizione, prezzo, visibile, immagine, 
                          prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, 

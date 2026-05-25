@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.3" # Fix matching immagini e layout sidebar/grid
+APP_VERSION = "1.3.4" # Fix immagini non caricate e layout filtro prezzi
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -17,7 +17,7 @@ else:
 
 logging.basicConfig(
     filename=os.path.join(base_dir, 'debug_log.txt'),
-    level=logging.ERROR,
+    level=logging.DEBUG, # Temporaneamente impostato su DEBUG per una diagnostica dettagliata
     format='%(asctime)s - %(levelname)s - %(message)s',
     encoding='utf-8'
 )
@@ -1549,6 +1549,7 @@ class CatalogoMainWindow(QMainWindow):
     def setup_prodotti_page(self):
         # Layout principale che conterrà lo stack per la navigazione a 2 livelli
         main_layout = QVBoxLayout(self.page_prodotti)
+        main_layout.setContentsMargins(35, 10, 10, 10) # Margine sinistro aumentato per garantire spazio dalla sidebar
         self.prodotti_stack = QStackedWidget()
         main_layout.addWidget(self.prodotti_stack)
 
