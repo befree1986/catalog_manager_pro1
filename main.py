@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.3.9" # Ripristino struttura file e fix entry point
+APP_VERSION = "1.4.0" # Scansione immagini ricorsiva e fix logging startup
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -23,7 +23,7 @@ logging.basicConfig(
 )
 
 # Log di avvio per confermare che il logging funziona
-logging.error(f"--- Tentativo di avvio applicazione v{APP_VERSION} ---")
+logging.info(f"--- Avvio applicazione v{APP_VERSION} ---")
 
 try:
     import pandas as pd # Requires 'pip install pandas openpyxl'
@@ -4742,23 +4742,3 @@ class CatalogoMainWindow(QMainWindow):
             if ok and destinatario:
                 invia_email(destinatario, 'Catalogo Prodotti', 'In allegato il catalogo.', file_path)
                 QMessageBox.information(self, 'Invio', 'Email inviata!')
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    try:
-        window = CatalogoMainWindow()
-        window.show()
-        sys.exit(app.exec_())
-    except Exception as e:
-        logging.exception("Errore fatale non gestito durante l'esecuzione:")
-        sys.exit(1)
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    try:
-        window = CatalogoMainWindow()
-        window.show()
-        sys.exit(app.exec_())
-    except Exception as e:
-        logging.exception("Errore fatale non gestito durante l'esecuzione:")
-        sys.exit(1)

@@ -1,3 +1,8 @@
+Versione: 1.4.0
+Correzioni e Funzionalità:
+- Sincronizzazione Ricorsiva: Il sistema ora trova le immagini anche se organizzate in sottocartelle all'interno della cartella selezionata.
+- Correzione Log: Il messaggio di avvio nel file di debug non viene più segnato come ERROR se l'applicazione si avvia correttamente.
+
 Versione: 1.3.9
 Correzioni e Funzionalità:
 - Risolto errore fatale AttributeError all'avvio causato da un posizionamento errato dell'entry point dell'applicazione.

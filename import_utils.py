@@ -76,11 +76,13 @@ def importa_dataframe_nel_db(df, images_folder=None, progress_callback=None, pri
     image_map = {}
     if images_folder and os.path.exists(images_folder):
         try:
-            for f in os.listdir(images_folder):
-                key = normalize_key(f)
-                if key:
-                    logging.debug(f"Image map: Adding key '{key}' for file '{f}'")
-                    image_map[key] = os.path.join(images_folder, f)
+            for root, dirs, files in os.walk(images_folder):
+                for f in files:
+                    key = normalize_key(f)
+                    if key:
+                        # In caso di duplicati in sottocartelle diverse, l'ultimo trovato vince
+                        image_map[key] = os.path.join(root, f)
+            logging.info(f"Mappa immagini importazione: trovati {len(image_map)} file (scansione ricorsiva).")
         except OSError as e: 
             logging.error(f"Errore durante la scansione della cartella immagini '{images_folder}': {e}")
             pass
@@ -224,10 +226,12 @@ def sincronizza_immagini_database(tipologia_filter, images_folder, progress_call
     # 1. Mappa immagini presenti nella cartella
     image_map = {}
     try:
-        for f in os.listdir(images_folder):
-            key = normalize_key(f)
-            if key:
-                image_map[key] = os.path.join(images_folder, f)
+        for root, dirs, files in os.walk(images_folder):
+            for f in files:
+                key = normalize_key(f)
+                if key:
+                    image_map[key] = os.path.join(root, f)
+        logging.info(f"Sincronizzazione: trovati {len(image_map)} file nella cartella selezionata (ricerca ricorsiva).")
     except OSError as e:
         logging.error(f"Errore scansione cartella sync: {e}")
         conn.close()
