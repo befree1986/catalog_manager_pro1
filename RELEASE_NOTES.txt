@@ -1,3 +1,11 @@
+Versione: 1.4.5
+Correzioni e Funzionalità:
+- Aggiunta la possibilità di caricare font TTF personalizzati dal disco per il catalogo PDF.
+
+Versione: 1.4.4
+Correzioni e Funzionalità:
+- Risolto l'errore "invia_email not found" che impediva l'invio di email e causava errori nel terminale.
+
 Versione: 1.4.3
 Correzioni e Funzionalità:
 - Correzione Avvio: Risolto un errore nella struttura della classe principale che causava il crash immediato.

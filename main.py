@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.4.4" # Filtri avanzati prodotti e fix invio email
+APP_VERSION = "1.4.5" # Supporto font TTF personalizzati
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1466,6 +1466,15 @@ class CatalogoMainWindow(QMainWindow):
         self.cat_font_combo = QComboBox()
         self.cat_font_combo.addItems(["Arial", "Courier", "Times"])
 
+        # Font TTF Esterno
+        self.cat_custom_font_layout = QHBoxLayout()
+        self.cat_custom_font_btn = QPushButton("Scegli TTF...")
+        self.cat_custom_font_btn.clicked.connect(self.choose_custom_font)
+        self.cat_custom_font_label = QLabel(os.path.basename(self.catalog_settings.get('custom_font_path', '')) or "Nessun TTF scelto")
+        self.cat_custom_font_label.setStyleSheet("font-style: italic; color: gray;")
+        self.cat_custom_font_layout.addWidget(self.cat_custom_font_btn)
+        self.cat_custom_font_layout.addWidget(self.cat_custom_font_label, 1)
+
         # Filtro Immagine Catalogo
         self.cat_img_filter_combo = QComboBox()
         self.cat_img_filter_combo.addItems(["Tutti i prodotti", "Solo prodotti con immagine"])
@@ -1920,6 +1929,8 @@ class CatalogoMainWindow(QMainWindow):
             self.cat_category_combo.setCurrentText(settings.get('category_filter', 'Tutte le categorie'))
             self.cat_tipologia_combo.setCurrentText(settings.get('tipologia_filter', 'Tutte'))
             self.cat_font_combo.setCurrentText(settings.get('font', 'Arial'))
+            if hasattr(self, 'cat_custom_font_label'):
+                self.cat_custom_font_label.setText(os.path.basename(settings.get('custom_font_path', '')) or "Nessun TTF scelto")
             self.cat_img_filter_combo.setCurrentText(settings.get('img_filter', 'Tutti i prodotti'))
             self.cat_include_index_cb.setChecked(settings.get('include_index', True))
             self.cat_sort_combo.setCurrentText(settings.get('sort_mode', 'Categoria (Personalizzato)'))
@@ -3807,6 +3818,13 @@ class CatalogoMainWindow(QMainWindow):
                 QApplication.restoreOverrideCursor()
                 logging.error(f"Errore invio mail supporto: {e}")
                 QMessageBox.critical(self, "Errore", f"Impossibile inviare la mail: {e}")
+
+    def choose_custom_font(self):
+        path, _ = QFileDialog.getOpenFileName(self, 'Seleziona Font TTF', '', 'TrueType Fonts (*.ttf)')
+        if path:
+            self.catalog_settings['custom_font_path'] = path
+            if hasattr(self, 'cat_custom_font_label'):
+                self.cat_custom_font_label.setText(os.path.basename(path))
 
     def update_auto_save_ui_to_config(self):
         self.auto_save_config['enabled'] = self.auto_save_checkbox.isChecked()

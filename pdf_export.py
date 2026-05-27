@@ -42,6 +42,16 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.config = config or {}
         self.primary_color = self._hex_to_rgb(self.config.get('color', '#2c3e50'))
         self.font_family = self.config.get('font', 'Arial')
+
+        # Caricamento Font TTF Personalizzato
+        self.custom_font_path = self.config.get('custom_font_path')
+        if self.custom_font_path and os.path.exists(self.custom_font_path):
+            f_name = os.path.splitext(os.path.basename(self.custom_font_path))[0].replace(' ', '')
+            try:
+                self.add_font(f_name, '', self.custom_font_path, uni=True)
+                self.font_family = f_name
+            except Exception as e:
+                print(f"Errore caricamento font TTF: {e}")
         self.on_cover = False
 
     def _hex_to_rgb(self, hex_color):
