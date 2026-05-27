@@ -1462,6 +1462,15 @@ class CatalogoMainWindow(QMainWindow):
         tipologie_esistenti = get_tipologie_prodotto()
         self.cat_tipologia_combo.addItems(tipologie_esistenti)
 
+        # Scelta Font Catalogo
+        self.cat_font_combo = QComboBox()
+        self.cat_font_combo.addItems(["Arial", "Courier", "Times"])
+
+        # Filtro Immagine Catalogo
+        self.cat_img_filter_combo = QComboBox()
+        self.cat_img_filter_combo.addItems(["Tutti i prodotti", "Solo prodotti con immagine"])
+        self.cat_img_filter_combo.setCurrentText(self.catalog_settings.get('img_filter', 'Tutti i prodotti'))
+
         # Nuove Opzioni (Indice e Ordinamento)
         self.cat_include_index_cb = QCheckBox("Includi pagina Indice")
         self.cat_include_index_cb.setChecked(self.catalog_settings.get('include_index', True))
@@ -1529,6 +1538,7 @@ class CatalogoMainWindow(QMainWindow):
         form_layout.addRow("", self.cat_include_index_cb)
         form_layout.addRow("Filtra Categoria:", self.cat_category_combo)
         form_layout.addRow("Filtra Tipologia:", self.cat_tipologia_combo)
+        form_layout.addRow("Filtro Immagini:", self.cat_img_filter_combo)
         form_layout.addRow("Copertina PDF:", cover_layout)
         
         # Pulsante Micro Editor Template
@@ -1852,6 +1862,8 @@ class CatalogoMainWindow(QMainWindow):
         self.catalog_settings['layout'] = self.cat_layout_combo.currentText()
         self.catalog_settings['category_filter'] = self.cat_category_combo.currentText()
         self.catalog_settings['tipologia_filter'] = self.cat_tipologia_combo.currentText()
+        self.catalog_settings['font'] = self.cat_font_combo.currentText()
+        self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
         self.catalog_settings['include_index'] = self.cat_include_index_cb.isChecked()
         self.catalog_settings['sort_mode'] = self.cat_sort_combo.currentText()
         
@@ -1907,6 +1919,8 @@ class CatalogoMainWindow(QMainWindow):
             self.cat_layout_combo.setCurrentText(settings.get('layout', 'Lista'))
             self.cat_category_combo.setCurrentText(settings.get('category_filter', 'Tutte le categorie'))
             self.cat_tipologia_combo.setCurrentText(settings.get('tipologia_filter', 'Tutte'))
+            self.cat_font_combo.setCurrentText(settings.get('font', 'Arial'))
+            self.cat_img_filter_combo.setCurrentText(settings.get('img_filter', 'Tutti i prodotti'))
             self.cat_include_index_cb.setChecked(settings.get('include_index', True))
             self.cat_sort_combo.setCurrentText(settings.get('sort_mode', 'Categoria (Personalizzato)'))
             
@@ -3214,6 +3228,7 @@ class CatalogoMainWindow(QMainWindow):
         # --- Dettaglio Listino (Destra) ---
         right_widget = QWidget()
         layout = QVBoxLayout(right_widget)
+        layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
         
         self.lbl_listino_corrente = QLabel("Seleziona un listino per modificare i prezzi")
@@ -3286,7 +3301,7 @@ class CatalogoMainWindow(QMainWindow):
         self.listini_category_combo.currentTextChanged.connect(self.filter_listini_table)
         self.listini_tipologia_combo.currentTextChanged.connect(self.filter_listini_table)
         
-        layout.addWidget(self.listini_table)
+        layout.addWidget(self.listini_table, 1) # Lo stretch 1 risolve la sovrapposizione
         
         refresh_btn = QPushButton("💾 Salva Modifiche Prezzi")
         refresh_btn.setProperty("class", "QuickAction")
@@ -4647,6 +4662,7 @@ class CatalogoMainWindow(QMainWindow):
         # Filtra Dati
         category_filter = self.catalog_settings.get('category_filter', 'Tutte le categorie')
         tipologia_filter = self.catalog_settings.get('tipologia_filter', 'Tutte')
+        img_filter = self.catalog_settings.get('img_filter', 'Tutti i prodotti')
         prodotti = lista_prodotti()
         
         filtered = []
@@ -4658,6 +4674,9 @@ class CatalogoMainWindow(QMainWindow):
             # p[9] = tipologia
             tipo = p[9] if len(p) > 9 else 'Generico'
             if tipologia_filter != 'Tutte' and tipo != tipologia_filter: continue
+            # Filtro immagine
+            if img_filter == "Solo prodotti con immagine" and not self.get_valid_image_path(p[6]):
+                continue
             filtered.append(p)
 
         # Genera HTML per la stampa

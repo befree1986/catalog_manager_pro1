@@ -41,6 +41,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         super().__init__()
         self.config = config or {}
         self.primary_color = self._hex_to_rgb(self.config.get('color', '#2c3e50'))
+        self.font_family = self.config.get('font', 'Arial')
         self.on_cover = False
 
     def _hex_to_rgb(self, hex_color):
@@ -54,7 +55,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.set_fill_color(r, g, b)
         self.rect(0, 0, 210, 30, 'F')
         header_font_size = self.config.get('style', {}).get('header_font_size', 20)
-        self.set_font('Arial', 'B', header_font_size)
+        self.set_font(self.font_family, 'B', header_font_size)
         self.set_text_color(255, 255, 255)
         self.cell(0, 15, self.config.get('title', 'Catalogo Prodotti'), 0, 1, 'C')
         self.ln(10)
@@ -79,18 +80,18 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.set_fill_color(*self.primary_color)
         self.rect(0, 100, 210, 60, 'F')
         self.set_y(115)
-        self.set_font('Arial', 'B', 28)
+        self.set_font(self.font_family, 'B', 28)
         self.set_text_color(255, 255, 255)
         self.cell(0, 15, title, 0, 1, 'C')
         if subtitle:
-            self.set_font('Arial', 'I', 16)
+            self.set_font(self.font_family, 'I', 16)
             self.cell(0, 10, subtitle, 0, 1, 'C')
 
     def footer(self):
         if self.on_cover:
             return
         self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
+        self.set_font(self.font_family, 'I', 8)
         self.set_text_color(128)
         company = self.config.get('company', '')
         self.cell(0, 10, f'{company} - Pagina {self.page_no()}', 0, 0, 'C')
@@ -137,7 +138,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.set_xy(50, start_y + 2)
         style = self.config.get('style', {})
         
-        self.set_font('Arial', 'B', style.get('product_title_size', 14))
+        self.set_font(self.font_family, 'B', style.get('product_title_size', 14))
         r, g, b = self.primary_color
         self.set_text_color(r, g, b)
         self.multi_cell(95, 6, nome, 0, 'L')
@@ -145,18 +146,18 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         # Codice SKU
         if codice:
             self.set_xy(50, self.get_y())
-            self.set_font('Arial', '', style.get('sku_size', 9))
+            self.set_font(self.font_family, '', style.get('sku_size', 9))
             self.set_text_color(80, 80, 80)
             self.cell(0, 4, f"SKU: {codice}", 0, 1)
         
         self.set_xy(50, self.get_y())
-        self.set_font('Arial', 'I', style.get('cat_size', 10))
+        self.set_font(self.font_family, 'I', style.get('cat_size', 10))
         self.set_text_color(100, 100, 100)
         self.cell(0, 5, categoria if categoria else "Nessuna Categoria", 0, 1)
         
         self.set_xy(50, self.get_y())
         # Descrizione
-        self.set_font('Arial', '', style.get('desc_size', 12))
+        self.set_font(self.font_family, '', style.get('desc_size', 12))
         self.set_text_color(0, 0, 0)
         # Tronca descrizione lunga
         desc_short = (descrizione[:75] + '...') if len(descrizione) > 75 else descrizione
@@ -199,12 +200,12 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
                     table_x = 155
                     table_y = start_y + 5
                     self.set_xy(table_x, table_y)
-                    self.set_font('Arial', 'B', 9)
+                    self.set_font(self.font_family, 'B', 9)
                     self.set_text_color(0,0,0)
                     self.cell(15, 6, "Q.ta", 1, 0, 'C')
                     self.cell(20, 6, "Prezzo", 1, 1, 'C')
                     
-                    self.set_font('Arial', '', 9)
+                    self.set_font(self.font_family, '', 9)
                     for qty, prc in tiers:
                         self.set_x(table_x)
                         self.cell(15, 6, f"{qty}+", 1, 0, 'C')
@@ -215,7 +216,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
                     
                     for idx, (lbl, val, col) in enumerate(prices_to_show):
                         self.set_xy(145, y_start + (idx * line_h))
-                        self.set_font('Arial', 'B', f_size)
+                        self.set_font(self.font_family, 'B', f_size)
                         self.set_text_color(*col)
                         
                         text = f"{lbl}: EUR {val:.2f}" if num_prices > 1 else f"EUR {val:.2f}"
@@ -260,7 +261,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         
         # Titolo Prodotto in Griglia
         grid_title_size = style.get('grid_title_size', 10)
-        self.set_font('Arial', 'B', grid_title_size)
+        self.set_font(self.font_family, 'B', grid_title_size)
         
         grid_title_color = style.get('grid_title_color', '#2c3e50')
         r, g, b = self._hex_to_rgb(grid_title_color)
@@ -269,7 +270,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         # Adattamento automatico del font se il nome è molto lungo
         nome_pulito = nome.replace('\n', ' ').strip()
         if len(nome_pulito) > 30:
-            self.set_font('Arial', 'B', grid_title_size - 1)
+            self.set_font(self.font_family, 'B', grid_title_size - 1)
             
         self.set_xy(x + 2, text_y)
         # multi_cell permette l'andata a capo automatica nel box
@@ -306,7 +307,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
                 self.set_xy(x + 2, price_y)
                 
                 f_size = 7 if len(prices_to_show) > 3 else 8
-                self.set_font('Arial', 'B', f_size)
+                self.set_font(self.font_family, 'B', f_size)
                 
                 row_h = 3.5
                 for lbl, val, col in prices_to_show:
@@ -319,7 +320,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
                 price_y = self.get_y() + 1
                 if tiers and len(tiers) > 1:
                     row_h = 3.5
-                    self.set_font('Arial', '', 7)
+                    self.set_font(self.font_family, '', 7)
                     self.set_text_color(0,0,0)
                     self.set_xy(x + 5, price_y)
                     self.cell(w-10, row_h, "Prezzi per quantità:", 0, 1, 'C')
@@ -330,7 +331,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
                         self.cell((w-10)/2, row_h, f"EUR {prc:.2f}", 0, 1, 'L')
                 else:
                     self.set_xy(x + 2, price_y + 2)
-                    self.set_font('Arial', 'B', style.get('grid_price_size', 11))
+                    self.set_font(self.font_family, 'B', style.get('grid_price_size', 11))
                     
                     self.set_text_color(*col)
                     self.cell(w-4, 6, f"EUR {val:.2f}", 0, 1, 'C')
@@ -353,6 +354,11 @@ def get_catalog_data(config):
     if tipologia_filter and tipologia_filter != "Tutte":
         query += ' AND tipologia_prodotto = ?'
         params.append(tipologia_filter)
+
+    # Filtro Immagine
+    img_filter = config.get('img_filter', 'Tutti i prodotti')
+    if img_filter == "Solo prodotti con immagine":
+        query += " AND immagine IS NOT NULL AND immagine != ''"
     
     try:
         c.execute(query, tuple(params))
@@ -374,14 +380,15 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
     # Pagina Indice (solo se non è dry_run e abbiamo una mappa)
     # Aggiunto controllo config 'include_index'
     if not dry_run and page_map and config.get('include_index', True):
+        font_family = config.get('font', 'Arial')
         pdf.add_page()
-        pdf.set_font('Arial', 'B', 24)
+        pdf.set_font(font_family, 'B', 24)
         pdf.cell(0, 20, "Indice Prodotti", 0, 1, 'C')
         pdf.ln(10)
         
-        pdf.set_font('Arial', 'B', 14)
+        pdf.set_font(font_family, 'B', 14)
         pdf.cell(0, 10, "Categorie:", 0, 1)
-        pdf.set_font('Arial', '', 12)
+        pdf.set_font(font_family, '', 12)
         
         index_items = []
         
