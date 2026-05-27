@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.4.3" # Fix definitivo struttura file e matching SKU intelligente
+APP_VERSION = "1.4.4" # Filtri avanzati prodotti e fix invio email
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1639,7 +1639,7 @@ class CatalogoMainWindow(QMainWindow):
             log_path = 'debug_log.txt' if (include_logs and os.path.exists('debug_log.txt')) else None
             try:
                 QApplication.setOverrideCursor(Qt.WaitCursor)
-                invia_email("g.marino787@gmail.com", f"Supporto App v{APP_VERSION}", testo, log_path)
+                send_email_logic("g.marino787@gmail.com", f"Supporto App v{APP_VERSION}", testo, log_path)
                 QApplication.restoreOverrideCursor()
                 QMessageBox.information(self, "Inviato", "Il tuo messaggio è stato inviato all'assistenza.")
             except Exception as e:
@@ -2116,7 +2116,7 @@ class CatalogoMainWindow(QMainWindow):
                 if ok and destinatario:
                     try:
                         QApplication.setOverrideCursor(Qt.WaitCursor)
-                        invia_email("g.marino787@gmail.com", 'Catalogo Prodotti', 'Ecco il catalogo in allegato.', path)
+                        send_email_logic(destinatario, 'Catalogo Prodotti', 'Ecco il catalogo in allegato.', path)
                         QMessageBox.information(self, 'Inviato', 'Email inviata con successo.')
                     except Exception as e:
                         QMessageBox.critical(self, 'Errore Invio', f"Impossibile inviare l'email:\n{e}")
@@ -3099,6 +3099,16 @@ class CatalogoMainWindow(QMainWindow):
         self.price_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
         header_r2.addWidget(self.price_filter_combo, 1)
 
+        self.img_filter_combo = QComboBox()
+        self.img_filter_combo.addItems(["🖼️ Tutte le Immagini", "✅ Solo con Immagine", "❌ Solo senza Immagine"])
+        self.img_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
+        header_r2.addWidget(self.img_filter_combo, 1)
+
+        self.visibility_grid_filter_combo = QComboBox()
+        self.visibility_grid_filter_combo.addItems(["👁️ Tutte le Visibilità", "✅ Solo Visibili", "🚫 Solo Nascosti"])
+        self.visibility_grid_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
+        header_r2.addWidget(self.visibility_grid_filter_combo, 1)
+
         btn_import = QPushButton("📥 Importa Excel")
         btn_import.clicked.connect(self.importa_excel)
         header_r2.addWidget(btn_import)
@@ -3775,7 +3785,7 @@ class CatalogoMainWindow(QMainWindow):
             log_path = 'debug_log.txt' if (include_logs and os.path.exists('debug_log.txt')) else None
             try:
                 QApplication.setOverrideCursor(Qt.WaitCursor)
-                invia_email("g.marino787@gmail.com", f"Supporto App v{APP_VERSION}", testo, log_path)
+                send_email_logic("g.marino787@gmail.com", f"Supporto App v{APP_VERSION}", testo, log_path)
                 QApplication.restoreOverrideCursor()
                 QMessageBox.information(self, "Inviato", "Il tuo messaggio è stato inviato all'assistenza.")
             except Exception as e:
@@ -4252,7 +4262,7 @@ class CatalogoMainWindow(QMainWindow):
                 if ok and destinatario:
                     try:
                         QApplication.setOverrideCursor(Qt.WaitCursor)
-                        invia_email(destinatario, 'Catalogo Prodotti', 'Ecco il catalogo in allegato.', path)
+                        send_email_logic(destinatario, 'Catalogo Prodotti', 'Ecco il catalogo in allegato.', path)
                         QMessageBox.information(self, 'Inviato', 'Email inviata con successo.')
                     except Exception as e:
                         QMessageBox.critical(self, 'Errore Invio', f"Impossibile inviare l'email:\n{e}")
@@ -4295,6 +4305,9 @@ class CatalogoMainWindow(QMainWindow):
         prodotti = lista_prodotti()
         filtro = self.search_input.text().lower()
         
+        img_filter = self.img_filter_combo.currentText() if hasattr(self, 'img_filter_combo') else "🖼️ Tutte le Immagini"
+        vis_filter = self.visibility_grid_filter_combo.currentText() if hasattr(self, 'visibility_grid_filter_combo') else "👁️ Tutte le Visibilità"
+        
         # Aggiungiamo un margine interno per evitare sovrapposizioni con la sidebar
         self.grid_container.setContentsMargins(15, 15, 15, 15)
         
@@ -4315,6 +4328,20 @@ class CatalogoMainWindow(QMainWindow):
             if tipologia_filtro and (len(p) <= 9 or p[9] != tipologia_filtro):
                 continue
                 
+            # Filtro Immagine
+            has_img = bool(self.get_valid_image_path(p[6]))
+            if img_filter == "✅ Solo con Immagine" and not has_img:
+                continue
+            if img_filter == "❌ Solo senza Immagine" and has_img:
+                continue
+
+            # Filtro Visibilità
+            is_visible = bool(p[5])
+            if vis_filter == "✅ Solo Visibili" and not is_visible:
+                continue
+            if vis_filter == "🚫 Solo Nascosti" and is_visible:
+                continue
+
             self.prodotti_filtrati_ids.append(p[0])
             
             card = ProductCard(p, self)
