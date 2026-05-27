@@ -1,3 +1,13 @@
+Versione: 1.4.3
+Correzioni e Funzionalità:
+- Correzione Avvio: Risolto un errore nella struttura della classe principale che causava il crash immediato.
+- Sincronizzazione Avanzata: Il sistema di matching ora ignora gli zeri iniziali, risolvendo i problemi di compatibilità tra file immagini e codici SKU esportati da Excel.
+
+Versione: 1.4.1
+Correzioni e Funzionalità:
+- Ripristino Avvio: Corretta la gerarchia dei metodi che causava crash all'apertura.
+- Sincronizzazione Intelligente: Aggiunto il supporto al matching per Nome Prodotto durante la sincronizzazione immagini.
+
 Versione: 1.4.0
 Correzioni e Funzionalità:
 - Sincronizzazione Ricorsiva: Il sistema ora trova le immagini anche se organizzate in sottocartelle all'interno della cartella selezionata.

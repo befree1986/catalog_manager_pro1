@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.4.0" # Scansione immagini ricorsiva e fix logging startup
+APP_VERSION = "1.4.3" # Fix definitivo struttura file e matching SKU intelligente
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -21,9 +21,6 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     encoding='utf-8'
 )
-
-# Log di avvio per confermare che il logging funziona
-logging.info(f"--- Avvio applicazione v{APP_VERSION} ---")
 
 try:
     import pandas as pd # Requires 'pip install pandas openpyxl'
@@ -55,7 +52,7 @@ from prodotti_manager import (lista_prodotti, aggiungi_prodotto, modifica_prodot
                               rinomina_catalogo_db, get_counts_per_tipologia, 
                               cancella_catalogo_db, get_prezzi_prodotto,
                               get_suffisso_listino, aggiorna_suffisso_listino, get_suffissi_listini)
-from email_utils import invia_email
+from email_utils import invia_email as send_email_logic
 from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, sincronizza_immagini_database, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
@@ -2586,30 +2583,17 @@ class CatalogoMainWindow(QMainWindow):
         doc.print_(printer)
         QMessageBox.information(self, "Stampa", "Documento inviato alla stampante.")
 
-    def invia_email(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Seleziona PDF da inviare', '', 'PDF (*.pdf)')
-        if file_path:
-            destinatario, ok = QInputDialog.getText(self, 'Destinatario', 'Email destinatario:')
-            if ok and destinatario:
-                invia_email(destinatario, 'Catalogo Prodotti', 'In allegato il catalogo.', file_path)
-                QMessageBox.information(self, 'Invio', 'Email inviata!')
-
     def _check_db_writable(self):
-        """Verifica se il file del database è scrivibile o se la cartella permette la creazione."""
+        """Verifica se il file del database è scrivibile."""
         try:
             if os.path.exists(DB_PATH):
-                # Prova ad aprire il file esistente in modalità append per testare la scrittura
-                with open(DB_PATH, 'a'):
-                    pass
+                with open(DB_PATH, 'a'): pass
             else:
-                # Se non esiste, testa se è possibile creare un file nella directory corrente
-                test_file = '.write_test'
-                with open(test_file, 'w') as f:
-                    f.write('test')
+                test_file = os.path.join(os.path.dirname(DB_PATH), '.write_test')
+                with open(test_file, 'w') as f: f.write('test')
                 os.remove(test_file)
             return True
-        except (IOError, OSError) as e:
-            logging.exception(f"Errore durante il controllo di scrittura del database: {e}")
+        except:
             return False
 
     def get_valid_image_path(self, relative_path):
@@ -4740,5 +4724,16 @@ class CatalogoMainWindow(QMainWindow):
         if file_path:
             destinatario, ok = QInputDialog.getText(self, 'Destinatario', 'Email destinatario:')
             if ok and destinatario:
-                invia_email(destinatario, 'Catalogo Prodotti', 'In allegato il catalogo.', file_path)
+                send_email_logic(destinatario, 'Catalogo Prodotti', 'In allegato il catalogo.', file_path)
                 QMessageBox.information(self, 'Invio', 'Email inviata!')
+
+if __name__ == '__main__':
+    logging.info(f"--- Tentativo di avvio applicazione v{APP_VERSION} ---")
+    app = QApplication(sys.argv)
+    try:
+        window = CatalogoMainWindow()
+        window.show()
+        sys.exit(app.exec_())
+    except Exception as e:
+        logging.exception("Errore fatale all'avvio:")
+        sys.exit(1)

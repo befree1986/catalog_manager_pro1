@@ -57,7 +57,8 @@ def normalize_key(val):
     # Rimuovi il suffisso .0 se è una rappresentazione float di un intero (es. "100.0")
     if s.endswith('.0'):
         s = s[:-2]
-    return s.strip()
+    # Rimuovi zeri iniziali per facilitare il matching (es "00123" -> "123")
+    return s.strip().lstrip('0')
 
 def get_row_value(row, key, default=""):
     """Recupera un valore da una riga Pandas in modo case-insensitive."""
@@ -238,14 +239,16 @@ def sincronizza_immagini_database(tipologia_filter, images_folder, progress_call
         return 0
 
     # 2. Recupera prodotti filtrati
+    logging.debug(f"Sincronizzazione immagini per tipologia: '{tipologia_filter}'")
     query = "SELECT id, nome, codice, immagine FROM prodotti"
     params = []
-    if tipologia_filter and tipologia_filter != "Tutte":
+    if tipologia_filter and tipologia_filter not in ("Tutte", "Tutti i Gruppi"):
         query += " WHERE tipologia_prodotto = ?"
         params.append(tipologia_filter)
     
     c.execute(query, params)
     prodotti = c.fetchall()
+    logging.debug(f"Prodotti trovati nel DB da controllare: {len(prodotti)}")
     
     updated_count = 0
     total = len(prodotti)
@@ -253,22 +256,34 @@ def sincronizza_immagini_database(tipologia_filter, images_folder, progress_call
     for i, (p_id, nome, codice, img_attuale) in enumerate(prodotti):
         resolved_path = None
         
-        # Prova con il codice/SKU
+        # Strategia di matching:
+        # 1. Prova con il codice/SKU esatto
         if codice:
             code_key = normalize_key(codice)
             if code_key in image_map:
                 resolved_path = image_map[code_key]
+            # 1b. Prova rimuovendo gli zeri iniziali (es. SKU 00344 -> file 344.jpg)
+            elif codice.lstrip('0') in image_map:
+                resolved_path = image_map[codice.lstrip('0')]
         
-        # Prova con il valore attuale del campo immagine (se è solo un nome file)
+        # 2. Prova con il Nome (fallback)
+        if not resolved_path and nome:
+            name_key = normalize_key(nome)
+            if name_key in image_map:
+                resolved_path = image_map[name_key]
+
+        # 3. Prova con il valore salvato nel campo immagine
         if not resolved_path and img_attuale:
             img_key = normalize_key(img_attuale)
             if img_key in image_map:
                 resolved_path = image_map[img_key]
         
-        # Aggiorna se abbiamo trovato qualcosa di nuovo o diverso
         if resolved_path and resolved_path != img_attuale:
+            logging.debug(f"Match trovato: '{nome}' -> {resolved_path}")
             c.execute("UPDATE prodotti SET immagine = ? WHERE id = ?", (resolved_path, p_id))
             updated_count += 1
+        elif not resolved_path:
+            logging.debug(f"Nessun match per '{nome}' (SKU: {codice}). Chiavi cercate: {normalize_key(codice)}, {normalize_key(nome)}")
             
         if progress_callback:
             progress_callback(i + 1, total)
