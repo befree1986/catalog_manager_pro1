@@ -354,9 +354,16 @@ def get_catalog_data(config):
     # Filtro Categoria
     category_filter = config.get('category_filter', 'Tutte le categorie')
     tipologia_filter = config.get('tipologia_filter', 'Tutte')
-    query = 'SELECT nome, categoria, descrizione, prezzo, immagine, prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, qta_min_2, qta_min_3, qta_min_4, id FROM prodotti WHERE visibile=1'
+    query = 'SELECT nome, categoria, descrizione, prezzo, immagine, prezzo_secondario, codice, tipologia_prodotto, prezzo3, prezzo4, qta_min_2, qta_min_3, qta_min_4, id FROM prodotti WHERE 1=1'
     params = []
     
+    # Filtro Visibilità
+    visibility_filter = config.get('visibility_filter', 'Solo Visibili')
+    if visibility_filter == "Solo Visibili":
+        query += ' AND visibile = 1'
+    elif visibility_filter == "Solo Nascosti":
+        query += ' AND visibile = 0'
+
     if category_filter and category_filter != "Tutte le categorie":
         query += ' AND categoria = ?'
         params.append(category_filter)
