@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.4.6" # Ottimizzazione layout e filtri catalogo avanzati
+APP_VERSION = "1.4.7" # Fix filtri catalogo e layout scrollbar
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1880,6 +1880,8 @@ class CatalogoMainWindow(QMainWindow):
         self.catalog_settings['font'] = self.cat_font_combo.currentText()
         self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
         self.catalog_settings['visibility_filter'] = self.cat_visibility_combo.currentText()
+        self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
+        self.catalog_settings['visibility_filter'] = self.cat_visibility_combo.currentText()
         self.catalog_settings['include_index'] = self.cat_include_index_cb.isChecked()
         self.catalog_settings['sort_mode'] = self.cat_sort_combo.currentText()
         
@@ -1941,6 +1943,8 @@ class CatalogoMainWindow(QMainWindow):
             self.cat_img_filter_combo.setCurrentText(settings.get('img_filter', 'Tutti i prodotti'))
             self.cat_visibility_combo.setCurrentText(settings.get('visibility_filter', 'Solo Visibili'))
             self.cat_include_index_cb.setChecked(settings.get('include_index', True))
+            self.cat_img_filter_combo.setCurrentText(settings.get('img_filter', 'Tutti i prodotti'))
+            self.cat_visibility_combo.setCurrentText(settings.get('visibility_filter', 'Solo Visibili'))
             self.cat_sort_combo.setCurrentText(settings.get('sort_mode', 'Categoria (Personalizzato)'))
             
             # Carica la visibilità dei listini prezzi
@@ -3112,7 +3116,7 @@ class CatalogoMainWindow(QMainWindow):
 
         # --- Header Riga 2: Filtri e Ricerca (per evitare sovrapposizioni) ---
         header_r2 = QHBoxLayout()
-        header_r2.setContentsMargins(0, 5, 20, 10) # Margine destro per evitare sovrapposizione scrollbar
+        header_r2.setContentsMargins(0, 5, 35, 10) # Margine destro aumentato per evitare sovrapposizione scrollbar
         header_r2.setSpacing(10)
         
         self.search_input = QLineEdit()
@@ -3258,7 +3262,7 @@ class CatalogoMainWindow(QMainWindow):
         # --- Filtri ---
         filter_box = QWidget()
         filter_layout = QHBoxLayout(filter_box)
-        filter_layout.setContentsMargins(0,0,0,5)
+        filter_layout.setContentsMargins(0, 0, 35, 5) # Margine destro aumentato per evitare sovrapposizione scrollbar
         
         self.listini_search_input = QLineEdit()
         self.listini_search_input.setPlaceholderText("Cerca prodotto...")
@@ -3710,6 +3714,8 @@ class CatalogoMainWindow(QMainWindow):
         form_layout.addRow("", self.cat_include_index_cb)
         form_layout.addRow("Filtra Categoria:", self.cat_category_combo)
         form_layout.addRow("Filtra Tipologia:", self.cat_tipologia_combo)
+        form_layout.addRow("Filtro Immagini:", self.cat_img_filter_combo)
+        form_layout.addRow("Filtro Visibilità:", self.cat_visibility_combo)
         form_layout.addRow("Copertina PDF:", cover_layout)
         
         # Pulsante Micro Editor Template
@@ -4040,6 +4046,8 @@ class CatalogoMainWindow(QMainWindow):
         self.catalog_settings['layout'] = self.cat_layout_combo.currentText()
         self.catalog_settings['category_filter'] = self.cat_category_combo.currentText()
         self.catalog_settings['tipologia_filter'] = self.cat_tipologia_combo.currentText()
+        self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
+        self.catalog_settings['visibility_filter'] = self.cat_visibility_combo.currentText()
         self.catalog_settings['include_index'] = self.cat_include_index_cb.isChecked()
         self.catalog_settings['sort_mode'] = self.cat_sort_combo.currentText()
         
@@ -4096,6 +4104,8 @@ class CatalogoMainWindow(QMainWindow):
             self.cat_category_combo.setCurrentText(settings.get('category_filter', 'Tutte le categorie'))
             self.cat_tipologia_combo.setCurrentText(settings.get('tipologia_filter', 'Tutte'))
             self.cat_include_index_cb.setChecked(settings.get('include_index', True))
+            self.cat_img_filter_combo.setCurrentText(settings.get('img_filter', 'Tutti i prodotti'))
+            self.cat_visibility_combo.setCurrentText(settings.get('visibility_filter', 'Solo Visibili'))
             self.cat_sort_combo.setCurrentText(settings.get('sort_mode', 'Categoria (Personalizzato)'))
             
             # Carica la visibilità dei listini prezzi

@@ -1,3 +1,8 @@
+Versione: 1.4.7
+Correzioni e Funzionalità:
+- Ripristinati i filtri immagine e visibilità nel dialogo di generazione catalogo (precedentemente non visualizzati correttamente).
+- Aumentato il margine destro dei filtri nella pagina prodotti e listini per risolvere definitivamente il problema della scrollbar sovrapposta.
+
 Versione: 1.4.6
 Correzioni e Funzionalità:
 - Ottimizzato il layout della griglia prodotti per evitare che la barra di scorrimento copra i filtri.
