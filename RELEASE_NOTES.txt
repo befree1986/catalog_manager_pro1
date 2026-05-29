@@ -1,3 +1,19 @@
+Versione: 1.5.0
+Correzioni e Funzionalità:
+- Risolto il problema critico del codice duplicato che causava crash all'avvio.
+- Corretti errori di sintassi nei blocchi di notifica aggiornamenti.
+
+Versione: 1.4.9
+Correzioni e Funzionalità:
+- Risolti errori di parsing dovuti a codice duplicato.
+- Ripristinata la visualizzazione completa dei filtri (Font, Immagini, Visibilità) nel dialogo di generazione catalogo.
+
+Versione: 1.4.8
+Correzioni e Funzionalità:
+- Risolto il problema della barra di scorrimento che copriva i filtri (margine aumentato a 50px).
+- Ripristinata la visualizzazione della scelta Font e Font TTF nel dialogo di generazione catalogo.
+- Ottimizzata la gestione delle notifiche di sistema per evitare avvisi di errore nei log.
+- Allineata la logica di filtraggio immagini e visibilità tra PDF e Stampa rapida.
 Versione: 1.4.7
 Correzioni e Funzionalità:
 - Ripristinati i filtri immagine e visibilità nel dialogo di generazione catalogo (precedentemente non visualizzati correttamente).

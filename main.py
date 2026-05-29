@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.4.7" # Fix filtri catalogo e layout scrollbar
+APP_VERSION = "1.5.0" # Fix definitivo duplicazione codice e errori di parsing
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1509,6 +1509,9 @@ class CatalogoMainWindow(QMainWindow):
         form_layout.addRow("", self.cat_show_prices_cb)
         
         # Checkboxes dei listini da mostrare nel PDF
+        form_layout.addRow("Carattere (Font):", self.cat_font_combo)
+        form_layout.addRow("Font TTF Esterno:", self.cat_custom_font_layout)
+
         self.prices_group = QGroupBox("Listini da mostrare nel PDF")
         prices_group_layout = QVBoxLayout(self.prices_group)
         
@@ -1880,6 +1883,7 @@ class CatalogoMainWindow(QMainWindow):
         self.catalog_settings['font'] = self.cat_font_combo.currentText()
         self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
         self.catalog_settings['visibility_filter'] = self.cat_visibility_combo.currentText()
+        self.catalog_settings['font'] = self.cat_font_combo.currentText()
         self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
         self.catalog_settings['visibility_filter'] = self.cat_visibility_combo.currentText()
         self.catalog_settings['include_index'] = self.cat_include_index_cb.isChecked()
@@ -3116,7 +3120,8 @@ class CatalogoMainWindow(QMainWindow):
 
         # --- Header Riga 2: Filtri e Ricerca (per evitare sovrapposizioni) ---
         header_r2 = QHBoxLayout()
-        header_r2.setContentsMargins(0, 5, 35, 10) # Margine destro aumentato per evitare sovrapposizione scrollbar
+        header_r2.setContentsMargins(0, 5, 50, 10) # Margine destro aumentato per evitare sovrapposizione scrollbar
+        header_r2.setAlignment(Qt.AlignLeft)
         header_r2.setSpacing(10)
         
         self.search_input = QLineEdit()
@@ -3262,7 +3267,8 @@ class CatalogoMainWindow(QMainWindow):
         # --- Filtri ---
         filter_box = QWidget()
         filter_layout = QHBoxLayout(filter_box)
-        filter_layout.setContentsMargins(0, 0, 35, 5) # Margine destro aumentato per evitare sovrapposizione scrollbar
+        filter_layout.setContentsMargins(0, 0, 50, 5) # Margine destro aumentato per evitare sovrapposizione scrollbar
+        filter_layout.setAlignment(Qt.AlignLeft)
         
         self.listini_search_input = QLineEdit()
         self.listini_search_input.setPlaceholderText("Cerca prodotto...")
@@ -3335,184 +3341,6 @@ class CatalogoMainWindow(QMainWindow):
         
         main_layout.addWidget(right_widget, 1) # Espande a destra
         self.current_listino_id = None
-
-    def salva_suffisso_listino_corrente(self):
-        if self.current_listino_id is None:
-            QMessageBox.warning(self, "Attenzione", "Nessun listino selezionato per salvare il suffisso.")
-            return
-        
-        suffisso = self.input_suffisso.text().strip()
-        aggiorna_suffisso_listino(self.current_listino_id, suffisso)
-        QMessageBox.information(self, "Successo", "Suffisso listino aggiornato.")
-        # Aggiorna la combo dei filtri prezzo per riflettere il nuovo suffisso
-        self.refresh_price_filter_combo()
-
-    def filter_listini_table(self):
-        if self.current_listino_id is not None:
-            self.load_prezzi_table(self.current_listino_id)
-
-    def load_listini_page_logic(self):
-        # Carica sidebar
-        self.listini_list_widget.clear()
-        listini = get_listini() # [(id, nome, desc), ...]
-        if not listini:
-            crea_listino("Listino Base", "Listino predefinito")
-            listini = get_listini()
-        
-        # Popola i filtri
-        self.listini_category_combo.blockSignals(True)
-        self.listini_tipologia_combo.blockSignals(True)
-        
-        self.listini_category_combo.clear()
-        self.listini_category_combo.addItem("Tutte le Categorie")
-        self.listini_tipologia_combo.clear()
-        self.listini_tipologia_combo.addItem("Tutte le Tipologie")
-        
-        all_products = lista_prodotti()
-        categories = sorted(list(set(p[2] for p in all_products if p[2])))
-        tipologie = get_tipologie_prodotto() # Use existing function
-        
-        self.listini_category_combo.addItems(categories)
-        self.listini_tipologia_combo.addItems(tipologie)
-        
-        self.listini_category_combo.blockSignals(False)
-        self.listini_tipologia_combo.blockSignals(False)
-        
-        # Aggiungi listini alla lista
-        from PyQt5.QtWidgets import QListWidgetItem
-        for l in listini:
-            list_item = QListWidgetItem(l[1])
-            list_item.setData(Qt.UserRole, l[0]) # ID
-            list_item.setSizeHint(list_item.sizeHint()) 
-            self.listini_list_widget.addItem(list_item)
-            
-        # Se c'era un listino selezionato, riselezionalo o seleziona il primo
-        if self.listini_list_widget.count() > 0:
-            self.listini_list_widget.setCurrentRow(0)
-            self.on_listino_selected(self.listini_list_widget.item(0))
-
-    def on_listino_selected(self, item):
-        self.current_listino_id = item.data(Qt.UserRole)
-        self.lbl_listino_corrente.setText(f"Modifica Prezzi: {item.text()}")
-        self.load_prezzi_table(self.current_listino_id)
-
-    def load_prezzi_table(self, listino_id):
-        if listino_id is None: return
-        
-        all_prodotti = lista_prodotti()
-        
-        # Filtra prodotti
-        search_text = self.listini_search_input.text().lower() if hasattr(self, 'listini_search_input') else ""
-        category_filter = self.listini_category_combo.currentText() if hasattr(self, 'listini_category_combo') else "Tutte le Categorie"
-        tipologia_filter = self.listini_tipologia_combo.currentText() if hasattr(self, 'listini_tipologia_combo') else "Tutte le Tipologie"
-        
-        prodotti_filtrati = []
-        for p in all_prodotti:
-            name_match = search_text in p[1].lower()
-            cat_match = category_filter == "Tutte le Categorie" or p[2] == category_filter
-            tipo_match = tipologia_filter == "Tutte le Tipologie" or (len(p) > 9 and p[9] == tipologia_filter)
-
-            if name_match and cat_match and tipo_match:
-                prodotti_filtrati.append(p)
-        
-        prodotti = prodotti_filtrati
-        prezzi_custom = get_prezzi_listino(listino_id) # {prod_id: prezzo}
-        
-        self.listini_table.blockSignals(True) # Evita trigger durante il caricamento
-        
-        self.listini_table.setRowCount(len(prodotti))
-        for i, p in enumerate(prodotti):
-            # p: id, nome, cat, desc, prezzo_base...
-            
-            # 0. Immagine
-            img_path_raw = p[6]
-            img_path = self.get_valid_image_path(img_path_raw)
-            img_item = QTableWidgetItem()
-            if img_path:
-                 pixmap = QPixmap(img_path)
-                 if not pixmap.isNull():
-                     # Scaliamo per entrare nella riga
-                     icon = QIcon(pixmap)
-                     img_item.setIcon(icon)
-            self.listini_table.setItem(i, 0, img_item)
-
-            # 1. Nome
-            self.listini_table.setItem(i, 1, QTableWidgetItem(p[1]))
-            self.listini_table.item(i, 1).setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable) # Readonly
-
-            # 2. Codice
-            codice = p[8] if len(p) > 8 else ""
-            self.listini_table.setItem(i, 2, QTableWidgetItem(str(codice)))
-            self.listini_table.item(i, 2).setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable) # Readonly
-
-            # 3. Quantità (Visualizzazione Soglie)
-            # Mostra breve riassunto es: ">10, >50"
-            soglie = []
-            if len(p) > 12 and p[12]: soglie.append(f">{p[12]}")
-            if len(p) > 13 and p[13]: soglie.append(f">{p[13]}")
-            if len(p) > 14 and p[14]: soglie.append(f">{p[14]}")
-            qt_text = ", ".join(soglie) if soglie else "-"
-            
-            self.listini_table.setItem(i, 3, QTableWidgetItem(qt_text))
-            self.listini_table.item(i, 3).setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-
-            # 4. Prezzo Base
-            self.listini_table.setItem(i, 4, QTableWidgetItem(f"{p[4]:.2f}")) 
-            self.listini_table.item(i, 4).setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable) # Readonly
-            
-            # 5. Prezzo Listino (Editabile)
-            # Se esiste un prezzo custom usa quello, altrimenti usa il prezzo base come placeholder o valore
-            prezzo_val = prezzi_custom.get(p[0])
-            
-            display_val = ""
-            if prezzo_val is not None:
-                display_val = f"{prezzo_val:.2f}"
-            else:
-                # Opzionale: precompila con prezzo base o lascia vuoto
-                display_val = f"{p[4]:.2f}"
-
-            item_price = QTableWidgetItem(display_val)
-            item_price.setData(Qt.UserRole, p[0]) # ID Prodotto
-            # Colora sfondo per indicare editabilità
-            item_price.setBackground(QColor("#eaf2f8"))
-            self.listini_table.setItem(i, 5, item_price)
-
-        self.listini_table.blockSignals(False)
-
-    def crea_nuovo_listino(self):
-        nome, ok = QInputDialog.getText(self, "Nuovo Listino", "Nome del nuovo listino:")
-        if ok and nome:
-            crea_listino(nome)
-            self.load_listini_page_logic()
-
-    def elimina_listino_corrente(self):
-        if self.current_listino_id is None:
-            QMessageBox.warning(self, "Attenzione", "Nessun listino selezionato.")
-            return
-            
-        reply = QMessageBox.question(self, "Elimina Listino", "Sei sicuro di voler eliminare questo listino e tutti i prezzi associati?", QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            cancella_listino(self.current_listino_id)
-            self.current_listino_id = None
-            self.load_listini_page_logic()
-
-    def salva_prezzi_listino_corrente(self):
-        if self.current_listino_id is None: return
-        rows = self.listini_table.rowCount()
-        count = 0
-        for i in range(rows):
-            item = self.listini_table.item(i, 5) # Colonna Prezzo Listino
-            if not item: continue
-            prod_id = item.data(Qt.UserRole)
-            try:
-                txt = item.text().strip().replace(',', '.')
-                if not txt: continue # Salta vuoti
-                val = float(txt)
-                aggiorna_prezzo_listino(self.current_listino_id, prod_id, val)
-                count += 1
-            except:
-                pass
-        QMessageBox.information(self, "Salvataggio", f"Prezzi aggiornati per {count} prodotti.")
 
     def setup_cataloghi_page(self):
         layout = QVBoxLayout(self.page_cataloghi)
@@ -3670,6 +3498,8 @@ class CatalogoMainWindow(QMainWindow):
         form_layout.addRow("Colore Principale:", self.cat_color_btn)
         form_layout.addRow("", self.cat_show_prices_cb)
         
+        form_layout.addRow("Carattere (Font):", self.cat_font_combo)
+        form_layout.addRow("Font TTF Esterno:", self.cat_custom_font_layout)
         # Checkboxes dei listini da mostrare nel PDF
         self.prices_group = QGroupBox("Listini da mostrare nel PDF")
         prices_group_layout = QVBoxLayout(self.prices_group)
@@ -4046,6 +3876,7 @@ class CatalogoMainWindow(QMainWindow):
         self.catalog_settings['layout'] = self.cat_layout_combo.currentText()
         self.catalog_settings['category_filter'] = self.cat_category_combo.currentText()
         self.catalog_settings['tipologia_filter'] = self.cat_tipologia_combo.currentText()
+        self.catalog_settings['font'] = self.cat_font_combo.currentText()
         self.catalog_settings['img_filter'] = self.cat_img_filter_combo.currentText()
         self.catalog_settings['visibility_filter'] = self.cat_visibility_combo.currentText()
         self.catalog_settings['include_index'] = self.cat_include_index_cb.isChecked()
