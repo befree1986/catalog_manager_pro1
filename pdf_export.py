@@ -13,22 +13,30 @@ try:
 except ImportError:
     QImage = None
 
-def get_safe_image_path(img_path):
+_image_cache = {} # Cache per non processare la stessa immagine più volte
+
+def get_safe_image_path(img_path, max_dim=800):
     if not img_path or not os.path.exists(img_path) or QImage is None:
         return None
     
+    if img_path in _image_cache and os.path.exists(_image_cache[img_path][0]):
+        return _image_cache[img_path]
+
     try:
         image = QImage(img_path)
         if not image.isNull():
-            temp_dir = tempfile.gettempdir()
-            # Nome file temporaneo univoco basato sulla hash del percorso immagine
             h = hashlib.md5(img_path.encode('utf-8')).hexdigest()
-            temp_file = os.path.join(temp_dir, f"pdf_img_{h}.jpg")
+            temp_file = os.path.join(tempfile.gettempdir(), f"pdf_img_{h}.jpg")
             
-            # Converte in formato RGB standard per evitare problemi con canali alfa in FPDF
+            # Ridimensiona se troppo grande per risparmiare RAM e velocizzare FPDF
+            if image.width() > max_dim or image.height() > max_dim:
+                image = image.scaled(max_dim, max_dim, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            
             image_rgb = image.convertToFormat(QImage.Format_RGB32)
             if image_rgb.save(temp_file, "JPEG", 90):
-                return temp_file, image.width(), image.height()
+                res = (temp_file, image.width(), image.height())
+                _image_cache[img_path] = res
+                return res
     except Exception as e:
         print(f"Errore nella conversione dell'immagine per PDF {img_path}: {e}")
     return None
@@ -42,6 +50,7 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         self.config = config or {}
         self.primary_color = self._hex_to_rgb(self.config.get('color', '#2c3e50'))
         self.font_family = self.config.get('font', 'Arial')
+        self.is_dry_run = False # Flag per saltare elaborazioni pesanti
 
         # Caricamento Font TTF Personalizzato
         self.custom_font_path = self.config.get('custom_font_path')
@@ -121,6 +130,11 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         
         # Immagine
         img_path = immagine.strip() if immagine else ""
+        
+        if self.is_dry_run: # Nel dry run saltiamo il processing dell'immagine
+            self.set_y(start_y + 45)
+            return
+
         safe_res = get_safe_image_path(img_path)
         if safe_res:
             temp_path, img_w, img_h = safe_res
@@ -245,6 +259,9 @@ class CatalogoPDF(FPDF if FPDF is not object else object):
         img_w_max = w - 10
         img_path = immagine.strip() if immagine else ""
         
+        if self.is_dry_run:
+            return
+
         safe_res = get_safe_image_path(img_path)
         if safe_res:
             temp_path, img_w, img_h = safe_res
@@ -453,7 +470,7 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
     last_category = None
     
     if "Griglia" in layout:
-        # Configurazione Colonne
+        # Configurazione colonne
         if "4" in layout:
             num_cols = 4
         elif "3" in layout:
@@ -463,25 +480,22 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
         margin = 10
         page_width = 210 - (margin * 2)
         col_gap = 5
-        # Calcolo larghezza colonna: (LarghezzaPagina - (Gap * (NumCol - 1))) / NumCol
         col_w = (page_width - (col_gap * (num_cols - 1))) / num_cols
         box_h = 75
-        
+
         current_col = 0
         row_y = pdf.get_y()
-        
+
         for row_data in prodotti:
             # Controllo nuova pagina solo all'inizio di ogni riga
-            if current_col == 0:
-                if row_y > 280 - box_h:
-                    pdf.add_page()
-                    row_y = pdf.get_y()
+            if current_col == 0 and row_y > 280 - box_h:
+                pdf.add_page()
+                row_y = pdf.get_y()
 
             # Unpack sicuro
             nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4, prod_id = row_data
-            
+
             cat_name = cat if cat else "Senza Categoria"
-            # Tracciamento Categoria per Indice
             if cat_name != last_category:
                 if cat_name not in current_category_map:
                     current_category_map[cat_name] = pdf.page_no()
@@ -489,17 +503,20 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
 
             # Costruisci Tiers
             tiers = [(1, prezzo)]
-            if p2 > 0 and q2 > 0: tiers.append((q2, p2))
-            if p3 > 0 and q3 > 0: tiers.append((q3, p3))
-            if p4 > 0 and q4 > 0: tiers.append((q4, p4))
+            if p2 > 0 and q2 > 0:
+                tiers.append((q2, p2))
+            if p3 > 0 and q3 > 0:
+                tiers.append((q3, p3))
+            if p4 > 0 and q4 > 0:
+                tiers.append((q4, p4))
 
             x = margin + (current_col * (col_w + col_gap))
             pdf.scheda_prodotto_grid(nome, cat, descrizione, prezzo, immagine, x, row_y, col_w, box_h, tiers, p2, p3, p4, prod_id)
-            
+
             current_col += 1
             if current_col >= num_cols:
                 current_col = 0
-                row_y += box_h + 5 # Altezza box + margine verticale
+                row_y += box_h + 5  # Altezza box + margine verticale verticale
     else:
         for row_data in prodotti:
             nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4, prod_id = row_data

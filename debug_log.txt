@@ -1,0 +1,40 @@
+2026-06-09 12:43:15,288 - INFO - --- Tentativo di avvio applicazione v1.5.1 ---
+2026-06-09 12:43:16,967 - ERROR - Errore fatale all'avvio:
+Traceback (most recent call last):
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 4382, in <module>
+    window = CatalogoMainWindow()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 1118, in __init__
+    self.init_ui()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 2894, in init_ui
+    self.setup_prodotti_page()
+AttributeError: 'CatalogoMainWindow' object has no attribute 'setup_prodotti_page'
+2026-06-09 12:43:30,319 - INFO - --- Tentativo di avvio applicazione v1.5.1 ---
+2026-06-09 12:43:30,762 - ERROR - Errore fatale all'avvio:
+Traceback (most recent call last):
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 4382, in <module>
+    window = CatalogoMainWindow()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 1118, in __init__
+    self.init_ui()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 2894, in init_ui
+    self.setup_prodotti_page()
+AttributeError: 'CatalogoMainWindow' object has no attribute 'setup_prodotti_page'
+2026-06-09 12:44:46,158 - INFO - --- Tentativo di avvio applicazione v1.5.1 ---
+2026-06-09 12:44:46,625 - ERROR - Errore fatale all'avvio:
+Traceback (most recent call last):
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 4382, in <module>
+    window = CatalogoMainWindow()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 1118, in __init__
+    self.init_ui()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 2894, in init_ui
+    self.setup_prodotti_page()
+AttributeError: 'CatalogoMainWindow' object has no attribute 'setup_prodotti_page'
+2026-06-09 12:44:53,849 - INFO - --- Tentativo di avvio applicazione v1.5.1 ---
+2026-06-09 12:44:54,317 - ERROR - Errore fatale all'avvio:
+Traceback (most recent call last):
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 4382, in <module>
+    window = CatalogoMainWindow()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 1118, in __init__
+    self.init_ui()
+  File "C:\Users\g_mar\Documents\lavoro\catalogManager1\main.py", line 2894, in init_ui
+    self.setup_prodotti_page()
+AttributeError: 'CatalogoMainWindow' object has no attribute 'setup_prodotti_page'
