@@ -11,6 +11,7 @@ from prodotti_manager import get_prezzi_prodotto
 try:
     from PyQt5.QtGui import QImage
 except ImportError:
+    # Fallback for environments without PyQt5.QtGui
     QImage = None
 
 _image_cache = {} # Cache per non processare la stessa immagine più volte
@@ -22,6 +23,11 @@ def get_safe_image_path(img_path, max_dim=800):
     if img_path in _image_cache and os.path.exists(_image_cache[img_path][0]):
         return _image_cache[img_path]
 
+    # Import Qt here to ensure it's available when QImage is used
+    try:
+        from PyQt5.QtCore import Qt
+    except ImportError:
+        Qt = None # Fallback if Qt is not available
     try:
         image = QImage(img_path)
         if not image.isNull():
@@ -30,7 +36,8 @@ def get_safe_image_path(img_path, max_dim=800):
             
             # Ridimensiona se troppo grande per risparmiare RAM e velocizzare FPDF
             if image.width() > max_dim or image.height() > max_dim:
-                image = image.scaled(max_dim, max_dim, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                if Qt: # Only use Qt if it was successfully imported
+                    image = image.scaled(max_dim, max_dim, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             
             image_rgb = image.convertToFormat(QImage.Format_RGB32)
             if image_rgb.save(temp_file, "JPEG", 90):
