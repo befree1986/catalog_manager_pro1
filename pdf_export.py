@@ -387,6 +387,15 @@ def get_catalog_data(config):
         
     prodotti = c.fetchall()
     conn.close()
+    
+    if img_filter == "Solo prodotti con immagine":
+        filtered = []
+        for p in prodotti:
+            img_path = p[4]
+            if img_path and os.path.exists(img_path):
+                filtered.append(p)
+        return filtered
+        
     return prodotti
 
 def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=None):
@@ -471,11 +480,12 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
             # Unpack sicuro
             nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4, prod_id = row_data
             
+            cat_name = cat if cat else "Senza Categoria"
             # Tracciamento Categoria per Indice
-            if cat != last_category:
-                if cat not in current_category_map:
-                    current_category_map[cat] = pdf.page_no()
-                last_category = cat
+            if cat_name != last_category:
+                if cat_name not in current_category_map:
+                    current_category_map[cat_name] = pdf.page_no()
+                last_category = cat_name
 
             # Costruisci Tiers
             tiers = [(1, prezzo)]
@@ -494,11 +504,12 @@ def generate_pdf_content(pdf, prodotti, config, layout, dry_run=False, page_map=
         for row_data in prodotti:
             nome, cat, descrizione, prezzo, immagine, p2, codice, tipologia, p3, p4, q2, q3, q4, prod_id = row_data
             
+            cat_name = cat if cat else "Senza Categoria"
             # Tracciamento Categoria per Indice
-            if cat != last_category:
-                if cat not in current_category_map:
-                    current_category_map[cat] = pdf.page_no()
-                last_category = cat
+            if cat_name != last_category:
+                if cat_name not in current_category_map:
+                    current_category_map[cat_name] = pdf.page_no()
+                last_category = cat_name
 
             tiers = [(1, prezzo)]
             if p2 > 0 and q2 > 0: tiers.append((q2, p2))

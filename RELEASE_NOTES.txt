@@ -1,3 +1,9 @@
+Versione: 1.5.1
+Correzioni e Funzionalità:
+- Risolto il bug che causava l'inclusione di prodotti senza immagine fisicamente presente sul disco quando si usava il filtro "Solo prodotti con immagine".
+- Aggiunta una gestione sicura degli errori (try/catch) durante la generazione del catalogo PDF per prevenire crash improvvisi, specialmente quando il file di destinazione è aperto o protetto in scrittura.
+- Risolto il crash (TypeError) che si verificava generando l'indice alfabetico se alcuni prodotti erano privi di categoria.
+
 Versione: 1.5.0
 Correzioni e Funzionalità:
 - Risolto il problema critico del codice duplicato che causava crash all'avvio.

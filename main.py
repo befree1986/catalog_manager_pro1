@@ -6,7 +6,7 @@ import datetime
 import json
 import logging
 
-APP_VERSION = "1.5.0" # Fix definitivo duplicazione codice e errori di parsing
+APP_VERSION = "1.5.1" # Fix filtro immagini e crash generazione catalogo
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -2508,10 +2508,17 @@ class CatalogoMainWindow(QMainWindow):
 
         file_path, _ = QFileDialog.getSaveFileName(self, 'Salva PDF', 'catalogo.pdf', 'PDF (*.pdf)')
         if file_path:
-            esporta_catalogo_pdf(file_path, self.catalog_settings)
-            # Salva record nel DB
-            salva_catalogo_db(self.catalog_settings['title'], file_path, f"Generato il {datetime.datetime.now()}")
-            QMessageBox.information(self, 'Esportazione', 'Catalogo esportato in PDF!')
+            try:
+                esporta_catalogo_pdf(file_path, self.catalog_settings)
+                # Salva record nel DB
+                salva_catalogo_db(self.catalog_settings['title'], file_path, f"Generato il {datetime.datetime.now()}")
+                QMessageBox.information(self, 'Esportazione', 'Catalogo esportato in PDF!')
+            except PermissionError:
+                QMessageBox.critical(self, 'Errore Permessi', 'Impossibile salvare il file PDF. Assicurati che non sia già aperto in un altro programma.')
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                QMessageBox.critical(self, 'Errore', f"Errore durante la generazione del catalogo:\n{str(e)}")
 
     def stampa_catalogo(self):
         self.update_catalog_settings_from_ui()
@@ -4513,10 +4520,17 @@ class CatalogoMainWindow(QMainWindow):
 
         file_path, _ = QFileDialog.getSaveFileName(self, 'Salva PDF', 'catalogo.pdf', 'PDF (*.pdf)')
         if file_path:
-            esporta_catalogo_pdf(file_path, self.catalog_settings)
-            # Salva record nel DB
-            salva_catalogo_db(self.catalog_settings['title'], file_path, f"Generato il {datetime.datetime.now()}")
-            QMessageBox.information(self, 'Esportazione', 'Catalogo esportato in PDF!')
+            try:
+                esporta_catalogo_pdf(file_path, self.catalog_settings)
+                # Salva record nel DB
+                salva_catalogo_db(self.catalog_settings['title'], file_path, f"Generato il {datetime.datetime.now()}")
+                QMessageBox.information(self, 'Esportazione', 'Catalogo esportato in PDF!')
+            except PermissionError:
+                QMessageBox.critical(self, 'Errore Permessi', 'Impossibile salvare il file PDF. Assicurati che non sia già aperto in un altro programma.')
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                QMessageBox.critical(self, 'Errore', f"Errore durante la generazione del catalogo:\n{str(e)}")
 
     def stampa_catalogo(self):
         self.update_catalog_settings_from_ui()
