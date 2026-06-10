@@ -1,4 +1,9 @@
-Versione: 1.5.2
+Versione: 1.5.4
+Correzioni e Funzionalità:
+- Ripristino completo dell'interfaccia utente e di tutte le funzionalità operative (Dashboard, Gestione Listini, Filtri Prodotti).
+- Risoluzione definitiva degli errori AttributeError che impedivano l'avvio del programma.
+
+Versione: 1.5.3
 Correzioni e Funzionalità:
 - Ottimizzazione del caricamento delle immagini per migliorare le prestazioni con grandi quantità di prodotti.
 

@@ -7,7 +7,7 @@ import json
 import logging
 import sqlite3
  
-APP_VERSION = "1.5.3" # Ottimizzazione caricamento immagini e gestione cache
+APP_VERSION = "1.5.4" # Risoluzione conflitti strutturali e ripristino interfaccia completa
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1154,6 +1154,7 @@ class CatalogoMainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.page_impostazioni)
 
         self.setup_dashboard_page()
+        self.setup_listini_page()
         self.setup_prodotti_page()
         self.setup_cataloghi_page()
         self.setup_impostazioni_page()
@@ -1163,23 +1164,119 @@ class CatalogoMainWindow(QMainWindow):
         self.stacked_widget.setCurrentIndex(index)
         if index == 0: self.update_dashboard_data()
         elif index == 1: self.aggiorna_griglia_prodotti()
+        elif index == 2: self.load_listini_page_logic()
         elif index == 3: self.load_cataloghi_list()
 
     def setup_prodotti_page(self):
         """Configura la pagina di visualizzazione e gestione prodotti con scroll area."""
         layout = QVBoxLayout(self.page_prodotti)
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Cerca prodotti...")
-        self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
-        layout.addWidget(self.search_input)
         
+        # Barra Superiore: Ricerca e Bottoni
+        top_bar = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Cerca prodotti per nome, categoria o SKU...")
+        self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
+        top_bar.addWidget(self.search_input, 1)
+        
+        btn_nuovo = QPushButton("➕ Nuovo Prodotto")
+        btn_nuovo.clicked.connect(self.nuovo_articolo)
+        top_bar.addWidget(btn_nuovo)
+        
+        btn_sync = QPushButton("🔄 Sincronizza Immagini")
+        btn_sync.clicked.connect(self.sincronizza_immagini_correnti)
+        top_bar.addWidget(btn_sync)
+        
+        layout.addLayout(top_bar)
+        
+        # Barra Filtri
+        filter_bar = QHBoxLayout()
+        
+        self.img_filter_combo = QComboBox()
+        self.img_filter_combo.addItems(["🖼️ Tutte le Immagini", "✅ Solo con Immagine", "❌ Solo senza Immagine"])
+        self.img_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
+        
+        self.visibility_grid_filter_combo = QComboBox()
+        self.visibility_grid_filter_combo.addItems(["👁️ Tutte le Visibilità", "✅ Solo Visibili", "🚫 Solo Nascosti"])
+        self.visibility_grid_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
+        
+        self.price_filter_combo = QComboBox()
+        self.refresh_price_filter_combo() # Popola i listini
+        self.price_filter_combo.currentIndexChanged.connect(self.aggiorna_griglia_prodotti)
+        
+        btn_mass_edit = QPushButton("📦 Assegna Gruppo a Filtrati")
+        btn_mass_edit.clicked.connect(self.modifica_tipologia_massiva)
+
+        filter_bar.addWidget(QLabel("Filtri:"))
+        filter_bar.addWidget(self.img_filter_combo)
+        filter_bar.addWidget(self.visibility_grid_filter_combo)
+        filter_bar.addWidget(self.price_filter_combo)
+        filter_bar.addWidget(btn_mass_edit)
+        filter_bar.addStretch()
+        
+        layout.addLayout(filter_bar)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
         self.grid_container = QWidget()
         self.grid_layout = QGridLayout(self.grid_container)
         self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         scroll.setWidget(self.grid_container)
         layout.addWidget(scroll)
+
+    def refresh_price_filter_combo(self):
+        current = self.price_filter_combo.currentText()
+        self.price_filter_combo.clear()
+        self.price_filter_combo.addItems(["👀 Tutti i Prezzi", "💰 Prezzo Base", "💰 Listino 2", "💰 Listino 3", "💰 Listino 4"])
+        
+        listini = get_listini()
+        for l in listini:
+            self.price_filter_combo.addItem(f"📊 Listino: {l[1]}")
+            
+        index = self.price_filter_combo.findText(current)
+        if index >= 0: self.price_filter_combo.setCurrentIndex(index)
+
+    def setup_listini_page(self):
+        layout = QHBoxLayout(self.page_listini)
+        sidebar = QFrame()
+        sidebar.setFixedWidth(250)
+        sidebar.setStyleSheet("background-color: #f8f9fa; border-right: 1px solid #dee2e6;")
+        side_layout = QVBoxLayout(sidebar)
+        side_layout.addWidget(QLabel("<b>I Tuoi Listini</b>"))
+        self.listini_list_widget = QListWidget()
+        self.listini_list_widget.itemClicked.connect(self.on_listino_selected)
+        side_layout.addWidget(self.listini_list_widget)
+        btn_add = QPushButton("➕ Nuovo Listino")
+        btn_add.clicked.connect(self.crea_nuovo_listino)
+        side_layout.addWidget(btn_add)
+        layout.addWidget(sidebar)
+        main_area = QWidget()
+        main_layout = QVBoxLayout(main_area)
+        self.lbl_listino_corrente = QLabel("Seleziona un listino dalla colonna sinistra")
+        self.lbl_listino_corrente.setStyleSheet("font-size: 18px; font-weight: bold; color: #2c3e50;")
+        main_layout.addWidget(self.lbl_listino_corrente)
+        table_controls = QHBoxLayout()
+        self.listini_search_input = QLineEdit()
+        self.listini_search_input.setPlaceholderText("Filtra prodotti...")
+        self.listini_search_input.textChanged.connect(self.filter_listini_table)
+        self.listini_category_combo = QComboBox()
+        self.listini_category_combo.currentIndexChanged.connect(self.filter_listini_table)
+        self.listini_tipologia_combo = QComboBox()
+        self.listini_tipologia_combo.currentIndexChanged.connect(self.filter_listini_table)
+        table_controls.addWidget(self.listini_search_input)
+        table_controls.addWidget(self.listini_category_combo)
+        table_controls.addWidget(self.listini_tipologia_combo)
+        main_layout.addLayout(table_controls)
+        self.listini_table = QTableWidget()
+        self.listini_table.setColumnCount(6)
+        self.listini_table.setHorizontalHeaderLabels(["Foto", "Prodotto", "SKU", "Soglie Q.tà", "Base (€)", "Prezzo Listino"])
+        self.listini_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        main_layout.addWidget(self.listini_table)
+        btn_save = QPushButton("💾 Salva Modifiche Prezzi")
+        btn_save.setStyleSheet("background-color: #27ae60; color: white; padding: 10px; font-weight: bold;")
+        btn_save.clicked.connect(self.salva_prezzi_listino_corrente)
+        main_layout.addWidget(btn_save)
+        layout.addWidget(main_area)
 
     def setup_dashboard_page(self):
         """Configura la pagina dashboard con metriche e attività recenti."""
