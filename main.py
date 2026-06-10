@@ -5,8 +5,9 @@ import re
 import datetime
 import json
 import logging
-
-APP_VERSION = "1.5.2" # Fix filtro immagini e crash generazione catalogo
+import sqlite3
+ 
+APP_VERSION = "1.5.3" # Ottimizzazione caricamento immagini e gestione cache
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1056,6 +1057,41 @@ class SupportDialog(QDialog):
         return self.messaggio.toPlainText(), self.chk_logs.isChecked()
 
 class CatalogoMainWindow(QMainWindow):
+    def _check_db_writable(self):
+        """Verifica se il database è scrivibile."""
+        try:
+            # Tenta di aprire il database in modalità di scrittura
+            conn = sqlite3.connect(DB_PATH)
+            conn.close()
+            return True
+        except sqlite3.OperationalError as e:
+            logging.error(f"Errore di accesso al database: {e}")
+            return False
+        except Exception as e:
+            logging.error(f"Errore generico durante la verifica della scrivibilità del DB: {e}")
+            return False
+
+    def get_valid_image_path(self, img_path):
+        """
+        Verifica se un percorso immagine è valido e lo restituisce.
+        Utilizza una cache per evitare controlli ripetuti sul filesystem.
+        """
+        if not img_path:
+            return None
+        
+        # Se il percorso è già in cache, restituisci il valore (potrebbe essere None se non valido)
+        if img_path in self._image_path_cache:
+            return self._image_path_cache[img_path]
+        
+        # Altrimenti, controlla l'esistenza e memorizza in cache
+        if os.path.exists(img_path):
+            self._image_path_cache[img_path] = img_path
+            return img_path
+        
+        # Se non esiste, memorizza None in cache per future richieste
+        self._image_path_cache[img_path] = None
+        return None
+
     def __init__(self):
         super().__init__()
 
@@ -1088,6 +1124,7 @@ class CatalogoMainWindow(QMainWindow):
 
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         # File per salvare l'ordine custom delle categorie
+        self._image_path_cache = {} # Cache per i percorsi delle immagini
         self.category_order_file = os.path.join(self.base_dir, "category_order.json")
         self.catalog_structure_file = os.path.join(self.base_dir, "catalog_structure.json")
 
@@ -1118,116 +1155,6 @@ class CatalogoMainWindow(QMainWindow):
         self.init_ui()
         # Caricamento iniziale dati
         self.switch_page(0) 
-
-    def _check_db_writable(self):
-        """Verifica se il database è scrivibile."""
-        try:
-            # Tenta di aprire il database in modalità di scrittura
-            conn = sqlite3.connect(DB_PATH)
-            conn.close()
-            return True
-        except sqlite3.OperationalError as e:
-            logging.error(f"Errore di accesso al database: {e}")
-            return False
-        except Exception as e:
-            logging.error(f"Errore generico durante la verifica della scrivibilità del DB: {e}")
-            return False
-
-    def init_ui(self):
-        """Inizializza l'interfaccia utente principale, sidebar e stacked widget."""
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        # Sidebar
-        self.sidebar = QFrame()
-        self.sidebar.setFixedWidth(200)
-        self.sidebar.setStyleSheet("background-color: #2c3e50; color: white;")
-        sidebar_layout = QVBoxLayout(self.sidebar)
-        
-        lbl_title = QLabel("Catalogo Manager")
-        lbl_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 20px;")
-        sidebar_layout.addWidget(lbl_title)
-
-        btn_style = "QPushButton { text-align: left; padding: 10px; border: none; font-size: 14px; } QPushButton:hover { background-color: #34495e; }"
-        
-        self.btn_dash = QPushButton("🏠 Dashboard")
-        self.btn_prod = QPushButton("📦 Prodotti")
-        self.btn_list = QPushButton("💰 Listini")
-        self.btn_cat = QPushButton("🎨 Cataloghi")
-        self.btn_settings = QPushButton("⚙️ Impostazioni")
-
-        for b in [self.btn_dash, self.btn_prod, self.btn_list, self.btn_cat, self.btn_settings]:
-            b.setStyleSheet(btn_style)
-            b.setCursor(Qt.PointingHandCursor)
-            sidebar_layout.addWidget(b)
-
-        self.btn_dash.clicked.connect(lambda: self.switch_page(0))
-        self.btn_prod.clicked.connect(lambda: self.switch_page(1))
-        self.btn_list.clicked.connect(lambda: self.switch_page(2))
-        self.btn_cat.clicked.connect(lambda: self.switch_page(3))
-        self.btn_settings.clicked.connect(lambda: self.switch_page(4))
-
-        sidebar_layout.addStretch()
-        main_layout.addWidget(self.sidebar)
-
-        # Stacked Widget per le pagine
-        self.stacked_widget = QStackedWidget()
-        main_layout.addWidget(self.stacked_widget)
-
-        # Creazione Pagine
-        self.page_dashboard = QWidget()
-        self.page_prodotti = QWidget()
-        self.page_listini = QWidget()
-        self.page_cataloghi = QWidget()
-        self.page_impostazioni = QWidget()
-
-        self.stacked_widget.addWidget(self.page_dashboard)
-        self.stacked_widget.addWidget(self.page_prodotti)
-        self.stacked_widget.addWidget(self.page_listini)
-        self.stacked_widget.addWidget(self.page_cataloghi)
-        self.stacked_widget.addWidget(self.page_impostazioni)
-
-        # Setup dei contenuti delle pagine
-        # Nota: setup_dashboard_page e altre dovrebbero essere definite o chiamate qui
-        self.setup_prodotti_page()
-        self.setup_cataloghi_page()
-        self.setup_impostazioni_page()
-
-    def switch_page(self, index):
-        """Cambia la pagina visualizzata nello stacked widget."""
-        self.stacked_widget.setCurrentIndex(index)
-        if index == 0: self.update_dashboard_data()
-        elif index == 1: self.aggiorna_griglia_prodotti()
-        elif index == 3: self.load_cataloghi_list()
-
-    def setup_prodotti_page(self):
-        """Configura la pagina di visualizzazione e gestione prodotti."""
-        layout = QVBoxLayout(self.page_prodotti)
-        
-        # Barra di ricerca e filtri
-        top_bar = QHBoxLayout()
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Cerca prodotti per nome o categoria...")
-        self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
-        
-        btn_nuovo = QPushButton("➕ Nuovo Prodotto")
-        btn_nuovo.clicked.connect(self.nuovo_articolo)
-        
-        top_bar.addWidget(self.search_input)
-        top_bar.addWidget(btn_nuovo)
-        layout.addLayout(top_bar)
-
-        # Area Griglia
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        self.grid_container = QWidget()
-        self.grid_layout = QGridLayout(self.grid_container)
-        self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        scroll.setWidget(self.grid_container)
-        layout.addWidget(scroll)
 
     def salva_suffisso_listino_corrente(self):
         """Salva il simbolo/suffisso (es. € o %) per il listino selezionato."""

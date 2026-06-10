@@ -1,4 +1,7 @@
-Versione: 1.5.1
+Versione: 1.5.2
+Correzioni e Funzionalità:
+- Ottimizzazione del caricamento delle immagini per migliorare le prestazioni con grandi quantità di prodotti.
+
 Correzioni e Funzionalità:
 - Risolto il bug che causava l'inclusione di prodotti senza immagine fisicamente presente sul disco quando si usava il filtro "Solo prodotti con immagine".
 - Aggiunta una gestione sicura degli errori (try/catch) durante la generazione del catalogo PDF per prevenire crash improvvisi, specialmente quando il file di destinazione è aperto o protetto in scrittura.
@@ -13,32 +16,3 @@ Versione: 1.4.9
 Correzioni e Funzionalità:
 - Risolti errori di parsing dovuti a codice duplicato.
 - Ripristinata la visualizzazione completa dei filtri (Font, Immagini, Visibilità) nel dialogo di generazione catalogo.
-
-Versione: 1.4.8
-Correzioni e Funzionalità:
-- Risolto il problema della barra di scorrimento che copriva i filtri (margine aumentato a 50px).
-- Ripristinata la visualizzazione della scelta Font e Font TTF nel dialogo di generazione catalogo.
-- Ottimizzata la gestione delle notifiche di sistema per evitare avvisi di errore nei log.
-- Allineata la logica di filtraggio immagini e visibilità tra PDF e Stampa rapida.
-Versione: 1.4.7
-Correzioni e Funzionalità:
-- Ripristinati i filtri immagine e visibilità nel dialogo di generazione catalogo (precedentemente non visualizzati correttamente).
-- Aumentato il margine destro dei filtri nella pagina prodotti e listini per risolvere definitivamente il problema della scrollbar sovrapposta.
-
-Versione: 1.4.6
-Correzioni e Funzionalità:
-- Ottimizzato il layout della griglia prodotti per evitare che la barra di scorrimento copra i filtri.
-- Aggiunti filtri per immagini e visibilità nella finestra di generazione catalogo PDF.
-
-Versione: 1.4.5
-Correzioni e Funzionalità:
-- Aggiunta la possibilità di caricare font TTF personalizzati dal disco per il catalogo PDF.
-
-Versione: 1.4.4
-Correzioni e Funzionalità:
-- Risolto l'errore "invia_email not found" che impediva l'invio di email e causava errori nel terminale.
-
-Versione: 1.4.3
-Correzioni e Funzionalità:
-- Correzione Avvio: Risolto un errore nella struttura della classe principale che causava il crash immediato.
-- Sincronizzazione Avanzata: Il sistema di matching ora ignora gli zeri iniziali, risolvendo i problemi di compatibilità tra file immagini e codici SKU esportati da Excel.

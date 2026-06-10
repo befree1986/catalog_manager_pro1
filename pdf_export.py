@@ -14,7 +14,7 @@ except ImportError:
     # Fallback for environments without PyQt5.QtGui
     QImage = None
 
-_image_cache = {} # Cache per non processare la stessa immagine più volte
+_image_cache = {} # Cache per non processare la stessa immagine più volte durante la generazione del PDF
 
 def get_safe_image_path(img_path, max_dim=800):
     if not img_path or not os.path.exists(img_path) or QImage is None:
