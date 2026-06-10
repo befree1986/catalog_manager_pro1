@@ -1153,6 +1153,7 @@ class CatalogoMainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.page_cataloghi)
         self.stacked_widget.addWidget(self.page_impostazioni)
 
+        self.setup_dashboard_page()
         self.setup_prodotti_page()
         self.setup_cataloghi_page()
         self.setup_impostazioni_page()
@@ -1179,6 +1180,45 @@ class CatalogoMainWindow(QMainWindow):
         self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         scroll.setWidget(self.grid_container)
         layout.addWidget(scroll)
+
+    def setup_dashboard_page(self):
+        """Configura la pagina dashboard con metriche e attività recenti."""
+        layout = QVBoxLayout(self.page_dashboard)
+        
+        # Header Dashboard
+        header = QLabel("Dashboard Riepilogo")
+        header.setStyleSheet("font-size: 22px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;")
+        layout.addWidget(header)
+
+        # Area Metriche
+        metrics_layout = QHBoxLayout()
+        self.prodotti_totali_lbl = QLabel("0")
+        self.prodotti_visibili_lbl = QLabel("0")
+        self.tipologie_lbl = QLabel("0")
+
+        metrics_layout.addWidget(self.create_metric_card("📦", "Prodotti Totali", self.prodotti_totali_lbl))
+        metrics_layout.addWidget(self.create_metric_card("👁️", "Prodotti Visibili", self.prodotti_visibili_lbl))
+        metrics_layout.addWidget(self.create_metric_card("📂", "Gruppi/Tipologie", self.tipologie_lbl))
+        layout.addLayout(metrics_layout)
+
+        # Area Cataloghi Recenti
+        layout.addWidget(QLabel("<b>Ultimi Cataloghi Generati:</b>"))
+        self.cataloghi_dashboard_table = QTableWidget()
+        self.cataloghi_dashboard_table.setColumnCount(2)
+        self.cataloghi_dashboard_table.setHorizontalHeaderLabels(["Nome Catalogo", "Data Creazione"])
+        self.cataloghi_dashboard_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        layout.addWidget(self.cataloghi_dashboard_table)
+
+        # Azioni rapide dashboard
+        btns = QHBoxLayout()
+        for label, func in [("📂 Apri PDF", self.apri_catalogo_selezionato), 
+                            ("📧 Invia Email", self.email_catalogo_selezionato),
+                            ("💬 WhatsApp", self.whatsapp_catalogo_selezionato)]:
+            btn = QPushButton(label)
+            btn.clicked.connect(func)
+            btns.addWidget(btn)
+        layout.addLayout(btns)
+        layout.addStretch()
 
     def get_valid_image_path(self, img_path):
         """
