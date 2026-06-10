@@ -1071,6 +1071,115 @@ class CatalogoMainWindow(QMainWindow):
             logging.error(f"Errore generico durante la verifica della scrivibilità del DB: {e}")
             return False
 
+    def backup_database(self):
+        """Crea una copia di sicurezza del database all'avvio."""
+        backup_dir = os.path.join(base_dir, 'backups')
+        if not os.path.exists(backup_dir):
+            try:
+                os.makedirs(backup_dir)
+            except Exception as e:
+                logging.error(f"Impossibile creare la cartella backup: {e}")
+                return
+
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = os.path.join(backup_dir, f'catalogo_backup_{timestamp}.db')
+        
+        try:
+            if os.path.exists(DB_PATH):
+                shutil.copy2(DB_PATH, backup_path)
+                logging.info(f"Backup automatico creato: {backup_path}")
+                
+                # Mantieni solo gli ultimi 10 backup
+                backups = sorted([os.path.join(backup_dir, f) for f in os.listdir(backup_dir) if f.endswith('.db')])
+                if len(backups) > 10:
+                    for old_backup in backups[:-10]:
+                        os.remove(old_backup)
+        except Exception as e:
+            logging.error(f"Errore durante il backup del database: {e}")
+
+    def init_ui(self):
+        """Inizializza l'interfaccia utente principale, sidebar e stacked widget."""
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Sidebar
+        self.sidebar = QFrame()
+        self.sidebar.setFixedWidth(200)
+        self.sidebar.setStyleSheet("background-color: #2c3e50; color: white;")
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        
+        lbl_title = QLabel("Catalogo Manager")
+        lbl_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 20px; padding: 10px;")
+        sidebar_layout.addWidget(lbl_title)
+
+        btn_style = "QPushButton { text-align: left; padding: 12px; border: none; font-size: 14px; color: white; } QPushButton:hover { background-color: #34495e; }"
+        
+        self.btn_dash = QPushButton("🏠 Dashboard")
+        self.btn_prod = QPushButton("📦 Prodotti")
+        self.btn_list = QPushButton("💰 Listini")
+        self.btn_cat = QPushButton("🎨 Cataloghi")
+        self.btn_settings = QPushButton("⚙️ Impostazioni")
+
+        for b in [self.btn_dash, self.btn_prod, self.btn_list, self.btn_cat, self.btn_settings]:
+            b.setStyleSheet(btn_style)
+            b.setCursor(Qt.PointingHandCursor)
+            sidebar_layout.addWidget(b)
+
+        self.btn_dash.clicked.connect(lambda: self.switch_page(0))
+        self.btn_prod.clicked.connect(lambda: self.switch_page(1))
+        self.btn_list.clicked.connect(lambda: self.switch_page(2))
+        self.btn_cat.clicked.connect(lambda: self.switch_page(3))
+        self.btn_settings.clicked.connect(lambda: self.switch_page(4))
+
+        sidebar_layout.addStretch()
+        main_layout.addWidget(self.sidebar)
+
+        # Stacked Widget per le pagine
+        self.stacked_widget = QStackedWidget()
+        main_layout.addWidget(self.stacked_widget)
+
+        self.page_dashboard = QWidget() # Placeholder o setup specifico
+        self.page_prodotti = QWidget()
+        self.page_listini = QWidget()
+        self.page_cataloghi = QWidget()
+        self.page_impostazioni = QWidget()
+
+        self.stacked_widget.addWidget(self.page_dashboard)
+        self.stacked_widget.addWidget(self.page_prodotti)
+        self.stacked_widget.addWidget(self.page_listini)
+        self.stacked_widget.addWidget(self.page_cataloghi)
+        self.stacked_widget.addWidget(self.page_impostazioni)
+
+        self.setup_prodotti_page()
+        self.setup_cataloghi_page()
+        self.setup_impostazioni_page()
+
+    def switch_page(self, index):
+        """Cambia la pagina visualizzata nello stacked widget."""
+        self.stacked_widget.setCurrentIndex(index)
+        if index == 0: self.update_dashboard_data()
+        elif index == 1: self.aggiorna_griglia_prodotti()
+        elif index == 3: self.load_cataloghi_list()
+
+    def setup_prodotti_page(self):
+        """Configura la pagina di visualizzazione e gestione prodotti con scroll area."""
+        layout = QVBoxLayout(self.page_prodotti)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Cerca prodotti...")
+        self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
+        layout.addWidget(self.search_input)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        self.grid_container = QWidget()
+        self.grid_layout = QGridLayout(self.grid_container)
+        self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        scroll.setWidget(self.grid_container)
+        layout.addWidget(scroll)
+
     def get_valid_image_path(self, img_path):
         """
         Verifica se un percorso immagine è valido e lo restituisce.
