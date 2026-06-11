@@ -6,8 +6,8 @@ import datetime
 import json
 import logging
 import sqlite3
- 
-APP_VERSION = "1.5.5" # Menu importazione rapida (Excel, Danea, Access)
+
+APP_VERSION = "1.6.0" # Stato Database e Fix Layout Dashboard
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -27,10 +27,10 @@ try:
     import pandas as pd # Requires 'pip install pandas openpyxl'
 except ImportError:
     pd = None
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar, QTextEdit, QSpinBox, QGroupBox)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QAction, QFileDialog, QMessageBox, QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout, QComboBox, QScrollArea, QInputDialog, QFrame, QSizePolicy, QLineEdit, QStackedWidget, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QFormLayout, QCheckBox, QColorDialog, QDialog, QDialogButtonBox, QProgressDialog, QGraphicsDropShadowEffect, QListWidget, QSplitter, QTabWidget, QMenu, QStatusBar, QTextEdit, QSpinBox, QGroupBox, QGraphicsOpacityEffect)
 import webbrowser
-from PyQt5.QtGui import QPixmap, QFont, QColor, QIcon, QTextDocument
-from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QTimer
+from PyQt5.QtGui import QPixmap, QFont, QColor, QIcon, QTextDocument, QPainter, QBrush, QPen
+from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QTimer, QPropertyAnimation, QRect, QEasingCurve, QPoint
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 import subprocess
 import tempfile
@@ -57,6 +57,80 @@ from email_utils import invia_email as send_email_logic
 from import_utils import get_access_tables, read_access_table, read_excel_df, read_danea_xml, importa_dataframe_nel_db, sincronizza_immagini_database, pyodbc
 from pdf_export import esporta_catalogo_pdf, FPDF
 from db import init_db, DB_PATH
+
+# --- NUOVE CLASSI DI UTILITY ---
+
+class ToastNotification(QWidget):
+    """Widget per notifiche a scomparsa (Toast) per errori e avvisi."""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.ToolTip)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        
+        self.layout = QHBoxLayout(self)
+        self.label = QLabel("")
+        self.label.setStyleSheet("color: white; font-weight: bold; font-size: 13px; padding: 10px;")
+        self.layout.addWidget(self.label)
+        
+        self.bg_frame = QFrame(self)
+        self.bg_frame.setStyleSheet("background-color: #333; border-radius: 8px;")
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.label.setParent(self.bg_frame)
+        
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+        
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.hide_toast)
+
+    def show_message(self, message, color="#e74c3c", duration=3000):
+        self.label.setText(message)
+        self.bg_frame.setStyleSheet(f"background-color: {color}; border-radius: 8px;")
+        self.bg_frame.adjustSize()
+        self.adjustSize()
+        
+        # Posizionamento in alto a destra rispetto al parent
+        parent_rect = self.parent().rect()
+        self.move(parent_rect.width() - self.width() - 20, 50)
+        
+        self.show()
+        self.opacity_effect.setOpacity(1.0)
+        self.timer.start(duration)
+
+    def hide_toast(self):
+        self.hide()
+
+class PieChartWidget(QWidget):
+    """Widget personalizzato per disegnare un grafico a torta delle categorie."""
+    def __init__(self, data=None):
+        super().__init__()
+        self.data = data or {} # {'Categoria': count}
+        self.setMinimumSize(250, 250)
+        self.colors = [QColor("#3498db"), QColor("#2ecc71"), QColor("#e67e22"), 
+                       QColor("#9b59b6"), QColor("#f1c40f"), QColor("#e74c3c")]
+
+    def paintEvent(self, event):
+        if not self.data: return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        rect = self.rect().adjusted(10, 10, -10, -10)
+        total = sum(self.data.values())
+        start_angle = 0
+        
+        for i, (cat, val) in enumerate(self.data.items()):
+            span_angle = int((val / total) * 360 * 16)
+            painter.setBrush(self.colors[i % len(self.colors)])
+            painter.setPen(Qt.NoPen)
+            painter.drawPie(rect, start_angle, span_angle)
+            start_angle += span_angle
+            
+            # Legenda semplice
+            painter.setBrush(self.colors[i % len(self.colors)])
+            painter.drawRect(rect.right() - 80, rect.top() + (i*15), 10, 10)
+            painter.setPen(QPen(Qt.black))
+            painter.setPen(QColor("#2c3e50"))
+            painter.drawText(rect.right() - 65, rect.top() + (i*15) + 10, f"{cat[:10]}")
 
 def format_prezzo_custom(prezzo, suffisso):
     """Formatta in modo intelligente un prezzo personalizzato in base al suo suffisso."""
@@ -1071,6 +1145,33 @@ class CatalogoMainWindow(QMainWindow):
             logging.error(f"Errore generico durante la verifica della scrivibilità del DB: {e}")
             return False
 
+    def _check_database_integrity(self):
+        """Verifica l'integrità del database per immagini mancanti e SKU duplicati."""
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        
+        missing_images_count = 0
+        duplicate_skus_count = 0
+        
+        # Check for missing images
+        c.execute('SELECT id, immagine FROM prodotti WHERE immagine IS NOT NULL AND immagine != ""')
+        for prod_id, img_path in c.fetchall():
+            if not os.path.exists(img_path):
+                missing_images_count += 1
+        
+        # Check for duplicate SKUs
+        c.execute('SELECT codice, COUNT(*) FROM prodotti WHERE codice IS NOT NULL AND codice != "" GROUP BY codice HAVING COUNT(*) > 1')
+        duplicate_skus_count = len(c.fetchall())
+        
+        conn.close()
+        return missing_images_count, duplicate_skus_count
+
+    def show_toast(self, message, is_error=True):
+        """Mostra una notifica a scomparsa."""
+        color = "#e74c3c" if is_error else "#2ecc71"
+        if hasattr(self, 'toast_manager'):
+            self.toast_manager.show_message(message, color)
+
     def backup_database(self):
         """Crea una copia di sicurezza del database all'avvio."""
         backup_dir = os.path.join(base_dir, 'backups')
@@ -1099,7 +1200,6 @@ class CatalogoMainWindow(QMainWindow):
 
     def init_ui(self):
         """Inizializza l'interfaccia utente principale, sidebar e stacked widget."""
-        self.setup_menu_bar()
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
@@ -1154,60 +1254,24 @@ class CatalogoMainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.page_cataloghi)
         self.stacked_widget.addWidget(self.page_impostazioni)
 
+        self.toast_manager = ToastNotification(self)
         self.setup_dashboard_page()
         self.setup_listini_page()
         self.setup_prodotti_page()
         self.setup_cataloghi_page()
         self.setup_impostazioni_page()
 
-    def setup_menu_bar(self):
-        """Configura la barra dei menu superiore."""
-        menubar = self.menuBar()
-        
-        # Menu File
-        file_menu = menubar.addMenu('&File')
-        
-        # Sottomenu Importa
-        import_menu = file_menu.addMenu('📥 Importa Prodotti')
-        
-        excel_action = QAction('Excel (.xlsx, .xls)', self)
-        excel_action.triggered.connect(self.importa_excel)
-        import_menu.addAction(excel_action)
-        
-        danea_action = QAction('Danea EasyFatt (XML)', self)
-        danea_action.triggered.connect(self.importa_danea)
-        import_menu.addAction(danea_action)
-        
-        access_action = QAction('MS Access (.mdb, .accdb)', self)
-        access_action.triggered.connect(self.importa_access)
-        import_menu.addAction(access_action)
-        
-        file_menu.addSeparator()
-        
-        exit_action = QAction('&Esci', self)
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-        
-        # Menu Database
-        db_menu = menubar.addMenu('&Database')
-        backup_action = QAction('📦 Crea Backup Manuale', self)
-        backup_action.triggered.connect(self.backup_database)
-        db_menu.addAction(backup_action)
-        
-        # Menu Aiuto
-        help_menu = menubar.addMenu('&Aiuto')
-        update_action = QAction('🔄 Controlla Aggiornamenti', self)
-        update_action.triggered.connect(self.check_for_updates)
-        help_menu.addAction(update_action)
-        about_action = QAction('ℹ️ Informazioni', self)
-        about_action.triggered.connect(self.show_about_dialog)
-        help_menu.addAction(about_action)
-
     def switch_page(self, index):
         """Cambia la pagina visualizzata nello stacked widget."""
         self.stacked_widget.setCurrentIndex(index)
-        if index == 0: self.update_dashboard_data()
-        elif index == 1: self.aggiorna_griglia_prodotti()
+        if index == 0: 
+            self.update_dashboard_data()
+        elif index == 1: 
+            # Se entriamo in prodotti, mostriamo prima i gruppi (se non siamo già dentro uno)
+            if not getattr(self, 'current_product_group_filter', None):
+                self.aggiorna_griglia_tipologie()
+            else:
+                self.aggiorna_griglia_prodotti()
         elif index == 2: self.load_listini_page_logic()
         elif index == 3: self.load_cataloghi_list()
 
@@ -1217,6 +1281,12 @@ class CatalogoMainWindow(QMainWindow):
         
         # Barra Superiore: Ricerca e Bottoni
         top_bar = QHBoxLayout()
+        
+        self.btn_back_to_groups = QPushButton("⬅️ Gruppi")
+        self.btn_back_to_groups.clicked.connect(self.torna_ai_gruppi)
+        self.btn_back_to_groups.hide()
+        top_bar.addWidget(self.btn_back_to_groups)
+
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Cerca prodotti per nome, categoria o SKU...")
         self.search_input.textChanged.connect(self.aggiorna_griglia_prodotti)
@@ -1225,14 +1295,6 @@ class CatalogoMainWindow(QMainWindow):
         btn_nuovo = QPushButton("➕ Nuovo Prodotto")
         btn_nuovo.clicked.connect(self.nuovo_articolo)
         top_bar.addWidget(btn_nuovo)
-
-        btn_import_quick = QPushButton("📥 Importa")
-        import_menu_prod = QMenu(self)
-        import_menu_prod.addAction("Excel (.xlsx, .xls)", self.importa_excel)
-        import_menu_prod.addAction("Danea EasyFatt (XML)", self.importa_danea)
-        import_menu_prod.addAction("MS Access (.mdb, .accdb)", self.importa_access)
-        btn_import_quick.setMenu(import_menu_prod)
-        top_bar.addWidget(btn_import_quick)
         
         btn_sync = QPushButton("🔄 Sincronizza Immagini")
         btn_sync.clicked.connect(self.sincronizza_immagini_correnti)
@@ -1275,6 +1337,13 @@ class CatalogoMainWindow(QMainWindow):
         self.grid_layout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         scroll.setWidget(self.grid_container)
         layout.addWidget(scroll)
+        
+        # Footer per Lazy Loading
+        self.btn_load_more = QPushButton("Mostra altri prodotti...")
+        self.btn_load_more.setStyleSheet("padding: 10px; background: #ecf0f1; border: 1px solid #bdc3c7;")
+        self.btn_load_more.clicked.connect(self.load_next_batch)
+        self.btn_load_more.hide()
+        layout.addWidget(self.btn_load_more)
 
     def refresh_price_filter_combo(self):
         current = self.price_filter_combo.currentText()
@@ -1350,26 +1419,35 @@ class CatalogoMainWindow(QMainWindow):
         metrics_layout.addWidget(self.create_metric_card("📂", "Gruppi/Tipologie", self.tipologie_lbl))
         layout.addLayout(metrics_layout)
 
-        # Area Cataloghi Recenti
-        layout.addWidget(QLabel("<b>Ultimi Cataloghi Generati:</b>"))
+        # Database Status Section
+        db_status_group = QGroupBox("Stato Database")
+        db_status_layout = QFormLayout(db_status_group)
+        self.missing_images_lbl = QLabel("N/D")
+        self.missing_images_lbl.setStyleSheet("font-weight: bold;")
+        db_status_layout.addRow("Immagini Mancanti:", self.missing_images_lbl)
+        self.duplicate_skus_lbl = QLabel("N/D")
+        self.duplicate_skus_lbl.setStyleSheet("font-weight: bold;")
+        db_status_layout.addRow("SKU Duplicati:", self.duplicate_skus_lbl)
+        layout.addWidget(db_status_group)
+
+        # Area Grafico e Tabella
+        mid_layout = QHBoxLayout()
+        self.pie_chart = PieChartWidget()
+        mid_layout.addWidget(self.pie_chart, 1)
+
+        right_info = QVBoxLayout()
+        right_info.addWidget(QLabel("<b>Ultimi Cataloghi Generati:</b>"))
         self.cataloghi_dashboard_table = QTableWidget()
         self.cataloghi_dashboard_table.setColumnCount(2)
         self.cataloghi_dashboard_table.setHorizontalHeaderLabels(["Nome Catalogo", "Data Creazione"])
         self.cataloghi_dashboard_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.cataloghi_dashboard_table)
+        right_info.addWidget(self.cataloghi_dashboard_table)
+        mid_layout.addLayout(right_info, 2)
+        layout.addLayout(mid_layout)
 
         # Azioni rapide dashboard
         btns = QHBoxLayout()
-
-        btn_import_dash = QPushButton("📥 Importa")
-        import_menu_dash = QMenu(self)
-        import_menu_dash.addAction("Excel (.xlsx, .xls)", self.importa_excel)
-        import_menu_dash.addAction("Danea EasyFatt (XML)", self.importa_danea)
-        import_menu_dash.addAction("MS Access (.mdb, .accdb)", self.importa_access)
-        btn_import_dash.setMenu(import_menu_dash)
-        btns.addWidget(btn_import_dash)
-
-        for label, func in [("📂 Apri PDF", self.apri_catalogo_selezionato),
+        for label, func in [("📂 Apri PDF", self.apri_catalogo_selezionato), 
                             ("📧 Invia Email", self.email_catalogo_selezionato),
                             ("💬 WhatsApp", self.whatsapp_catalogo_selezionato)]:
             btn = QPushButton(label)
@@ -1423,6 +1501,8 @@ class CatalogoMainWindow(QMainWindow):
         init_db()  # Inizializza il database all'avvio
         self.setWindowTitle('Dashboard Catalogo')
         self.resize(1024, 768)
+        self.items_per_page = 40
+        self.current_offset = 0
 
         # Imposta l'icona dell'applicazione
         icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
@@ -2462,6 +2542,20 @@ class CatalogoMainWindow(QMainWindow):
             self.cataloghi_dashboard_table.item(i, 0).setData(Qt.UserRole, c[0])
             self.cataloghi_dashboard_table.item(i, 0).setData(Qt.UserRole + 1, c[3]) # Path
 
+        # Aggiorna Grafico Categorie
+        cat_counts = {}
+        for p in prodotti:
+            cat = p[2] or "Senza Categoria"
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
+        self.pie_chart.data = cat_counts
+        self.pie_chart.update()
+
+        # Aggiorna Database Status
+        missing_images, duplicate_skus = self._check_database_integrity()
+        self.missing_images_lbl.setText(str(missing_images))
+        self.missing_images_lbl.setStyleSheet(f"font-weight: bold; color: {'red' if missing_images > 0 else 'green'};")
+        self.duplicate_skus_lbl.setText(str(duplicate_skus))
+        self.duplicate_skus_lbl.setStyleSheet(f"font-weight: bold; color: {'red' if duplicate_skus > 0 else 'green'};")
     def show_about_dialog(self):
         """Mostra un dialogo con le informazioni sulla versione e il copyright."""
         # Leggi il publisher da license.txt
@@ -2533,62 +2627,100 @@ class CatalogoMainWindow(QMainWindow):
                 
                 QMessageBox.information(self, 'WhatsApp', "Si è aperta la chat di WhatsApp e la cartella del file.\n\nTrascina il file PDF evidenziato direttamente nella chat per inviarlo.")
 
-    def aggiorna_griglia_prodotti(self):
-        # Selettore Tipologia Sidebar
-        tipologia_filtro = getattr(self, 'current_product_group_filter', None)
-        
-        # Pulisci griglia
+    def torna_ai_gruppi(self):
+        self.current_product_group_filter = None
+        self.btn_back_to_groups.hide()
+        self.aggiorna_griglia_tipologie()
+
+    def mostra_prodotti_per_tipologia(self, tipologia):
+        self.current_product_group_filter = tipologia
+        self.btn_back_to_groups.show()
+        self.aggiorna_griglia_prodotti()
+
+    def aggiorna_griglia_tipologie(self):
+        """Mostra la griglia delle cartelle (Gruppi/Tipologie)."""
+        self.current_offset = 0 # Reset lazy loading
+        self.btn_load_more.hide()
         for i in reversed(range(self.grid_layout.count())): 
             self.grid_layout.itemAt(i).widget().setParent(None)
             
-        prodotti = lista_prodotti()
+        counts = get_counts_per_tipologia()
+        row, col = 0, 0
+        for tipo, count in counts.items():
+            card = TipologiaCard(tipo, count, self)
+            self.grid_layout.addWidget(card, row, col)
+            col += 1
+            if col >= 4:
+                col = 0
+                row += 1
+
+    def aggiorna_griglia_prodotti(self):
+        """Mostra i prodotti filtrati con lazy loading."""
+        self.current_offset = 0
+        for i in reversed(range(self.grid_layout.count())): 
+            self.grid_layout.itemAt(i).widget().setParent(None)
+
+        tipologia_filtro = getattr(self, 'current_product_group_filter', None)
+        all_prodotti = lista_prodotti()
         filtro = self.search_input.text().lower()
-        
         img_filter = self.img_filter_combo.currentText() if hasattr(self, 'img_filter_combo') else "🖼️ Tutte le Immagini"
         vis_filter = self.visibility_grid_filter_combo.currentText() if hasattr(self, 'visibility_grid_filter_combo') else "👁️ Tutte le Visibilità"
         
-        # Aggiungiamo un margine interno per evitare sovrapposizioni con la sidebar
         self.grid_container.setContentsMargins(15, 15, 15, 15)
-        
-        row = 0
-        col = 0
-        # Calcolo dinamico colonne o fisso a 3 ma con spazio garantito
-        max_cols = 3 
-        
-        # Memorizziamo i prodotti filtrati correnti per la modifica massiva
-        self.prodotti_filtrati_ids = []
-        
-        for p in prodotti:
-            # p: id, nome, categoria, desc, prezzo, visibile, img, prezzo2, codice, tipologia
-            # Filtro ricerca su Nome e Categoria
+
+        # Pre-filtraggio in memoria (veloce anche con 5000+ articoli)
+        self.current_filtered_prodotti = []
+        for p in all_prodotti:
             if filtro and (filtro not in p[1].lower() and (len(p) <= 2 or not p[2] or filtro not in p[2].lower())):
                 continue
-            
             if tipologia_filtro and (len(p) <= 9 or p[9] != tipologia_filtro):
                 continue
-                
-            # Filtro Immagine
             has_img = bool(self.get_valid_image_path(p[6]))
             if img_filter == "✅ Solo con Immagine" and not has_img:
                 continue
             if img_filter == "❌ Solo senza Immagine" and has_img:
                 continue
-
-            # Filtro Visibilità
             is_visible = bool(p[5])
             if vis_filter == "✅ Solo Visibili" and not is_visible:
                 continue
             if vis_filter == "🚫 Solo Nascosti" and is_visible:
                 continue
+            self.current_filtered_prodotti.append(p)
 
-            self.prodotti_filtrati_ids.append(p[0])
-            
+        self.prodotti_filtrati_ids = [p[0] for p in self.current_filtered_prodotti]
+        self.load_next_batch()
+
+    def load_next_batch(self):
+        """Carica il prossimo batch di prodotti nella griglia."""
+        batch = self.current_filtered_prodotti[self.current_offset : self.current_offset + self.items_per_page]
+        
+        row = self.grid_layout.rowCount()
+        col = 0
+        # Se la riga corrente ha già elementi, trova l'ultima colonna libera
+        if row > 0:
+            row -= 1
+            while self.grid_layout.itemAtPosition(row, col) is not None:
+                col += 1
+                if col >= 3:
+                    col = 0
+                    row += 1
+
+        for p in batch:
             card = ProductCard(p, self)
             self.grid_layout.addWidget(card, row, col)
             col += 1
-            if col >= max_cols:
+            if col >= 3:
                 col = 0
                 row += 1
+        
+        self.current_offset += len(batch)
+        
+        # Mostra/nascondi pulsante Carica Altri
+        if self.current_offset < len(self.current_filtered_prodotti):
+            self.btn_load_more.show()
+            self.btn_load_more.setText(f"Carica altri ({len(self.current_filtered_prodotti) - self.current_offset} rimanenti)")
+        else:
+            self.btn_load_more.hide()
 
     def refresh_categories_combo(self):
         if not hasattr(self, 'cat_category_combo'):

@@ -1,3 +1,26 @@
+Versione: 1.6.0
+Correzioni e Funzionalità:
+- Aggiunta sezione "Stato Database" nella Dashboard per monitoraggio immagini e SKU.
+- Risoluzione definitiva degli errori di layout (NameError) nella Dashboard.
+
+Versione: 1.5.9
+Correzioni e Funzionalità:
+- Risolti errori NameError nella Dashboard che impedivano il corretto caricamento dei layout.
+- Implementato l'aggiornamento dinamico del grafico a torta per le categorie.
+
+Versione: 1.5.8
+Correzioni e Funzionalità:
+- Aggiunta sezione "Stato Database" nella Dashboard che avvisa su immagini mancanti e SKU duplicati.
+- Corretti errori di NameError nella configurazione della Dashboard.
+- Migliorata la robustezza generale dell'interfaccia.
+
+Versione: 1.5.7
+Correzioni e Funzionalità:
+- Introdotto grafico a torta nella Dashboard per la distribuzione categorie.
+- Nuovo sistema di notifiche "Toast" per la gestione non invasiva degli errori.
+- Ottimizzazione performance: caricamento pigro (lazy loading) nella griglia prodotti.
+- Ripristinata la navigazione per Gruppi (Tipologie) nella sezione Prodotti.
+
 Versione: 1.5.5
 Correzioni e Funzionalità:
 - Implementato menu a comparsa (QMenu) per il pulsante di importazione rapida.
