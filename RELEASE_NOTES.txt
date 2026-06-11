@@ -1,3 +1,8 @@
+Versione: 1.5.5
+Correzioni e Funzionalità:
+- Implementato menu a comparsa (QMenu) per il pulsante di importazione rapida.
+- Accesso diretto a Excel, Danea e Access dalla Dashboard e dalla barra strumenti Prodotti.
+
 Versione: 1.5.4
 Correzioni e Funzionalità:
 - Ripristino completo dell'interfaccia utente e di tutte le funzionalità operative (Dashboard, Gestione Listini, Filtri Prodotti).

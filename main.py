@@ -7,7 +7,7 @@ import json
 import logging
 import sqlite3
  
-APP_VERSION = "1.5.4" # Risoluzione conflitti strutturali e ripristino interfaccia completa
+APP_VERSION = "1.5.5" # Menu importazione rapida (Excel, Danea, Access)
 
 # --- SETUP LOGGING IMMEDIATO ---
 # Deve essere fatto PRIMA di caricare i moduli locali per catturare errori di importazione
@@ -1099,6 +1099,7 @@ class CatalogoMainWindow(QMainWindow):
 
     def init_ui(self):
         """Inizializza l'interfaccia utente principale, sidebar e stacked widget."""
+        self.setup_menu_bar()
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
@@ -1159,6 +1160,49 @@ class CatalogoMainWindow(QMainWindow):
         self.setup_cataloghi_page()
         self.setup_impostazioni_page()
 
+    def setup_menu_bar(self):
+        """Configura la barra dei menu superiore."""
+        menubar = self.menuBar()
+        
+        # Menu File
+        file_menu = menubar.addMenu('&File')
+        
+        # Sottomenu Importa
+        import_menu = file_menu.addMenu('📥 Importa Prodotti')
+        
+        excel_action = QAction('Excel (.xlsx, .xls)', self)
+        excel_action.triggered.connect(self.importa_excel)
+        import_menu.addAction(excel_action)
+        
+        danea_action = QAction('Danea EasyFatt (XML)', self)
+        danea_action.triggered.connect(self.importa_danea)
+        import_menu.addAction(danea_action)
+        
+        access_action = QAction('MS Access (.mdb, .accdb)', self)
+        access_action.triggered.connect(self.importa_access)
+        import_menu.addAction(access_action)
+        
+        file_menu.addSeparator()
+        
+        exit_action = QAction('&Esci', self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        # Menu Database
+        db_menu = menubar.addMenu('&Database')
+        backup_action = QAction('📦 Crea Backup Manuale', self)
+        backup_action.triggered.connect(self.backup_database)
+        db_menu.addAction(backup_action)
+        
+        # Menu Aiuto
+        help_menu = menubar.addMenu('&Aiuto')
+        update_action = QAction('🔄 Controlla Aggiornamenti', self)
+        update_action.triggered.connect(self.check_for_updates)
+        help_menu.addAction(update_action)
+        about_action = QAction('ℹ️ Informazioni', self)
+        about_action.triggered.connect(self.show_about_dialog)
+        help_menu.addAction(about_action)
+
     def switch_page(self, index):
         """Cambia la pagina visualizzata nello stacked widget."""
         self.stacked_widget.setCurrentIndex(index)
@@ -1181,6 +1225,14 @@ class CatalogoMainWindow(QMainWindow):
         btn_nuovo = QPushButton("➕ Nuovo Prodotto")
         btn_nuovo.clicked.connect(self.nuovo_articolo)
         top_bar.addWidget(btn_nuovo)
+
+        btn_import_quick = QPushButton("📥 Importa")
+        import_menu_prod = QMenu(self)
+        import_menu_prod.addAction("Excel (.xlsx, .xls)", self.importa_excel)
+        import_menu_prod.addAction("Danea EasyFatt (XML)", self.importa_danea)
+        import_menu_prod.addAction("MS Access (.mdb, .accdb)", self.importa_access)
+        btn_import_quick.setMenu(import_menu_prod)
+        top_bar.addWidget(btn_import_quick)
         
         btn_sync = QPushButton("🔄 Sincronizza Immagini")
         btn_sync.clicked.connect(self.sincronizza_immagini_correnti)
@@ -1308,7 +1360,16 @@ class CatalogoMainWindow(QMainWindow):
 
         # Azioni rapide dashboard
         btns = QHBoxLayout()
-        for label, func in [("📂 Apri PDF", self.apri_catalogo_selezionato), 
+
+        btn_import_dash = QPushButton("📥 Importa")
+        import_menu_dash = QMenu(self)
+        import_menu_dash.addAction("Excel (.xlsx, .xls)", self.importa_excel)
+        import_menu_dash.addAction("Danea EasyFatt (XML)", self.importa_danea)
+        import_menu_dash.addAction("MS Access (.mdb, .accdb)", self.importa_access)
+        btn_import_dash.setMenu(import_menu_dash)
+        btns.addWidget(btn_import_dash)
+
+        for label, func in [("📂 Apri PDF", self.apri_catalogo_selezionato),
                             ("📧 Invia Email", self.email_catalogo_selezionato),
                             ("💬 WhatsApp", self.whatsapp_catalogo_selezionato)]:
             btn = QPushButton(label)
