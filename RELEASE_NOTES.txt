@@ -1,3 +1,14 @@
+Versione: 1.6.2
+Correzioni e Funzionalità:
+- Introdotta utility di ottimizzazione immagini massiva (Menu Database).
+- Controllo aggiornamenti automatico all'avvio con banner discreto in Dashboard.
+- Migliorate le performance di rendering della griglia prodotti.
+
+Versione: 1.6.1
+Correzioni e Funzionalità:
+- Ripristinata la barra dei menu superiore scomparsa nell'ultimo aggiornamento.
+- Migliorato il layout del grafico a torta: ora è adattivo e la legenda non si sovrappone più al cerchio.
+
 Versione: 1.6.0
 Correzioni e Funzionalità:
 - Aggiunta sezione "Stato Database" nella Dashboard per monitoraggio immagini e SKU.

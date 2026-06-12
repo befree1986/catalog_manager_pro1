@@ -2,7 +2,7 @@
 ; Scarica Inno Setup da: https://jrsoftware.org/isdl.php
 
 #define MyAppName "Catalogo Manager Pro"
-#define MyAppVersion "1.6.0"
+#define MyAppVersion "1.6.2"
 #define MyAppPublisher "BeFree"
 #define MyAppURL "https://github.com/befree1986/catalog_manager_pro1"
 #define MyAppExeName "CatalogoApp.exe"
