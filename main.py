@@ -2470,6 +2470,20 @@ class CatalogoMainWindow(QMainWindow):
             self.cataloghi_dashboard_table.item(i, 0).setData(Qt.UserRole, c[0])
             self.cataloghi_dashboard_table.item(i, 0).setData(Qt.UserRole + 1, c[3]) # Path
 
+        # Aggiorna Grafico
+        cat_counts = {}
+        for p in prodotti:
+            cat = p[2] or "Senza Categoria"
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
+        self.pie_chart.data = cat_counts
+        self.pie_chart.update()
+
+        # Aggiorna Stato Database
+        missing, dups = self._check_database_integrity()
+        self.missing_images_lbl.setText(str(missing))
+        self.missing_images_lbl.setStyleSheet(f"color: {'red' if missing > 0 else 'green'}; font-weight: bold;")
+        self.duplicate_skus_lbl.setText(str(dups))
+        self.duplicate_skus_lbl.setStyleSheet(f"color: {'red' if dups > 0 else 'green'}; font-weight: bold;")
     def show_about_dialog(self):
         """Mostra un dialogo con le informazioni sulla versione e il copyright."""
         # Leggi il publisher da license.txt
